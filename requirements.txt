@@ -1,0 +1,4 @@
+Django<3
+djangorestframework
+markdown       # drf: Markdown support for the browsable API
+django-filter  # drf: Filtering support
