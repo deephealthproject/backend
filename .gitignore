@@ -5,7 +5,7 @@ venv-linux/
 versions/
 
 secrets.json
-*.sqlite3
+*.sqlite*
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

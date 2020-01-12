@@ -1,10 +1,11 @@
+from celery import shared_task
 from django.db.models import Q
-from rest_framework import mixins, status, viewsets, views
+from rest_framework import mixins, status, views, viewsets
 from rest_framework.response import Response
-from rest_framework import generics
 
-from backend_app import models, serializers, mixins as BAMixins
-# from deeplearning.tasks import classification
+from backend_app import mixins as BAMixins, models, serializers
+from deeplearning.utils import dotdict
+from deeplearning.tasks.classification import classification
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -171,6 +172,45 @@ class PropertyViewSet(mixins.ListModelMixin,
         return self.queryset
 
 
+class StatusView(views.APIView):
+    """
+    This is the API which allows the frontend to query the status of an
+    operation, identified by its `process_id`. The result depends on the
+    kind of operation identified by the `process_id`.
+    """
+
+    def get(self, request):
+        if not self.request.query_params.get('process_id'):
+            error = {'Error': f'Missing required parameter `process_id`'}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        process_id = self.request.query_params.get('process_id')
+        try:
+            with open(f'log_{process_id}.log', 'r') as f:
+                lines = f.read().splitlines()
+                last_line = lines[-1]
+        except:
+            res = {
+                "result": "error",
+                "error": "Server error"
+            }
+            return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if last_line == '<done>':
+            process_status = 'finished'
+            last_line = lines[-2]
+        else:
+            process_status = 'running'
+
+        res = {
+            'result': 'ok',
+            'status': {
+                'process_type': 'training',
+                'process_status': process_status,
+                'process_data': last_line,
+            }
+        }
+        return Response(data=res, status=status.HTTP_200_OK)
+
+
 class TaskViewSet(mixins.ListModelMixin,
                   viewsets.GenericViewSet):
     """
@@ -204,40 +244,45 @@ class TrainViewSet(views.APIView):
             weight.save()
 
             props = serializer.data['properties']
+            hyperparams = {}
             for p in props:
                 ts = models.TrainingSetting()
                 # Get the property by name
                 name = p['name']
                 name = [name, name.replace('_', ' ')]
                 queryset = models.Property.objects.filter(Q(name__icontains=name[0]) | Q(name__icontains=name[1]))
-                if not len(queryset):
+                if len(queryset) == 0:
                     # Property does not exist
                     weight.delete()
                     error = {"Error": f"Property `{p['name']}` does not exist"}
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
-                ts.property_id = queryset[0]
+                property = queryset[0]
+                ts.property_id = property
                 ts.modelweights_id = weight
                 ts.value = str(p['value'])
                 ts.save()
+                hyperparams[property.name] = ts.value
 
-            # Start training todo
             args = {
+                'weight_id': weight.id,
                 'model': 'LeNet',
                 'num_classes': 10,
                 'pretrained': False,
 
-                'batch_size': 8,
+                'batch_size': 64,
                 'test_batch_size': 8,
                 'lr': 1e-4,
-                'epochs': 50,
+                'epochs': 1,
 
                 'log_interval': 50,
                 'save_model': True,
+                'gpu': True,
+                'in_ds': '/mnt/data/DATA/mnist/mnist.yml',
             }
-            # import asyncio
-            #
-            # loop = asyncio.get_event_loop()
-            # loop.create_task(classification.classification(args))
+
+            # Start training todo
+            classification.delay(args)
+            # classification(args)
 
             response = {
                 "result": "ok",
@@ -269,3 +314,64 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
         property_id = self.request.query_params.get('property_id')
         self.queryset = models.TrainingSetting.objects.filter(modelweights_id=modelweights_id, property_id=property_id)
         return self.queryset
+
+
+class Dummy(views.APIView):
+
+    def get(self, request):
+        args = {
+            'weight_id': 1,
+            'model': 'LeNet',
+            'num_classes': 10,
+            'pretrained': False,
+
+            'batch_size': 64,
+            'test_batch_size': 8,
+            'lr': 1e-4,
+            'epochs': 1,
+
+            'log_interval': 50,
+            'save_model': True,
+            'gpu': True,
+            'in_ds': '/mnt/data/DATA/mnist/mnist.yml',
+        }
+
+        classification.delay(args)
+        # classification(args)
+
+        # print(res.get())
+        return Response({'ok': 'ok'}, status=status.HTTP_200_OK)
+
+
+class DummyStatus(views.APIView):
+
+    def get(self, request):
+        if not self.request.query_params.get('process_id'):
+            error = {'Error': f'Missing required parameter `process_id`'}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        process_id = self.request.query_params.get('process_id')
+        try:
+            with open(f'log_{process_id}.log', 'r') as f:
+                lines = f.read().splitlines()
+                last_line = lines[-1]
+        except:
+            res = {
+                "result": "error",
+                "error": "Server error"
+            }
+            return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if last_line == '<done>':
+            process_status = 'finished'
+            last_line = lines[-2]
+        else:
+            process_status = 'running'
+
+        res = {
+            'result': 'ok',
+            'status': {
+                'process_type': 'training',
+                'process_status': process_status,
+                'process_data': last_line,
+            }
+        }
+        return Response(data=res, status=status.HTTP_200_OK)

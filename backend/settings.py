@@ -44,12 +44,12 @@ ALLOWED_HOSTS = [
     'jenkins-master-deephealth-unix01',
     'jenkins-master-deephealth-unix01.ing.unimore.it',
     'localhost',
+    '127.0.0.1',
+    'deephealth-gpu',
 ]
 
 # Application definition
-
 INSTALLED_APPS = [
-    'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -57,9 +57,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'backend_app.apps.BackendAppConfig',
+    'rest_framework',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -149,12 +152,13 @@ USE_TZ = True
 STATIC_URL = '/backend/static/'
 APPEND_SLASH = True
 
-CORS_ALLOW_METHODS = [
-    'GET',
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-    'OPTIONS'
-    'LIST'
-]
+CORS_ORIGIN_ALLOW_ALL = True
+
+# CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
+CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
+
+#: Only add pickle to this list if your broker is secured
+#: from unwanted access (see userguide/security.html)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
+CELERY_TASK_SERIALIZER = 'json'
