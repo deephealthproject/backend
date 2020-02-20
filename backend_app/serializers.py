@@ -39,15 +39,13 @@ class ModelSerializer(serializers.ModelSerializer):
 class ModelWeightsSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ModelWeights
-        # fields = ['id', 'pretrained_on']
-        # fields = '__all__'
-        exclude = ['location']
+        exclude = ['location', 'celery_id']
 
 
-class PretrainingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.Dataset
-        fields = ['id', 'name']
+# class PretrainingSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = models.Dataset
+#         fields = ['id', 'name']
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -93,9 +91,5 @@ class TrainingSettingSerializer(serializers.ModelSerializer):
         exclude = ['id']
 
 
-class WeightsSerializer(serializers.ModelSerializer):
-    pretraining = PretrainingSerializer(source='pretraining_id')
-
-    class Meta:
-        model = models.ModelWeights
-        fields = ['id', 'pretraining']
+class StopProcessSerializer(serializers.Serializer):
+    process_id = serializers.UUIDField()

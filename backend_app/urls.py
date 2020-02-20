@@ -22,10 +22,9 @@ router.register(r'weights', views.ModelWeightsViewSet)
 
 router.add_api_view('inference', path('inference', views.InferenceViewSet.as_view(), name='inference'))
 router.add_api_view('status', path('status', views.StatusView.as_view(), name='status'))
+router.add_api_view('stopProcess', path('stopProcess', views.StopProcessViewSet.as_view(), name='stopProcess'))
 router.add_api_view('train', path('train', views.TrainViewSet.as_view(), name='train'))
-
-# router.add_api_view('dummy', path('dummy', views.Dummy.as_view(), name='dummy'))
-# router.add_api_view('dummyStatus', path('dummyStatus', views.DummyStatus.as_view(), name='dummyStatus'))
+router.add_api_view('output', path('output', views.OutputViewSet.as_view(), name='output'))
 
 urlpatterns = [
     path('backend/', include(router.urls)),

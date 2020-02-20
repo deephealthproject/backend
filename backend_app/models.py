@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 
 
@@ -32,6 +33,13 @@ class Inference(models.Model):
     dataset_id = models.ForeignKey(Dataset, on_delete=models.CASCADE)
     stats = models.CharField(max_length=2048)
 
+    # Celery generates a random uuid4
+    celery_id = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['celery_id'])]
+        # ordering = ['id']
+
     def __str__(self):
         return f'{self.modelweights_id.name} - {self.dataset_id.name}'
 
@@ -59,8 +67,12 @@ class ModelWeights(models.Model):
     dataset_id = models.ForeignKey(Dataset, on_delete=models.PROTECT)
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
 
+    # Celery generates a random uuid4
+    celery_id = models.CharField(max_length=50, null=True, blank=True)
+
     class Meta:
-        ordering = ['id']
+        indexes = [models.Index(fields=['celery_id'])]
+        # ordering = ['id']
         verbose_name_plural = "Model weights"
 
     def __str__(self):

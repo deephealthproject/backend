@@ -46,6 +46,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'deephealth-gpu',
+    '155.185.48.170'
 ]
 
 # Application definition
@@ -138,6 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
+# TIME_ZONE = 'Europe/Rome'
 
 USE_I18N = True
 
@@ -152,7 +154,9 @@ USE_TZ = True
 STATIC_URL = '/backend/static/'
 APPEND_SLASH = True
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:4200',
+]
 
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
@@ -162,3 +166,6 @@ CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
 CELERY_TASK_SERIALIZER = 'json'
+
+TRAINING_DIR = os.path.join(BASE_DIR, 'data', 'training')
+INFERENCE_DIR = os.path.join(BASE_DIR, 'data', 'inference')

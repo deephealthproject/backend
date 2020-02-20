@@ -1,10 +1,13 @@
 Django<3
-djangorestframework<3.11
+djangorestframework
 markdown       # drf: Markdown support for the browsable API
 django-filter  # drf: Filtering support
+pyyaml         # drf: Generate OpenAPI
+uritemplate    # drf: Generate OpenAPI
 django-cors-headers # drf: enables CORS
 celery   # Runs training processes
 sqlalchemy  # Required by celery
+opencv-python-headless
 
 # PyEDDL/PyECVL requirements
 numpy
