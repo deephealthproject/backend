@@ -41,10 +41,8 @@ class Evaluator:
 @shared_task
 def training(args):
     logs_dir = os.path.join(settings.TRAINING_DIR, 'logs/')
-    preds_dir = os.path.join(settings.TRAINING_DIR, 'predictions/')
     ckpts_dir = os.path.join(settings.TRAINING_DIR, 'ckpts/')
     os.makedirs(os.path.dirname(logs_dir), exist_ok=True)
-    os.makedirs(os.path.dirname(preds_dir), exist_ok=True)
     os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
 
     args = dotdict(args)
@@ -265,8 +263,10 @@ def inference(args):
                     # cv2.imwrite(f'{imgs_dir}/{j}_{k}.png', concat)
                     iou = evaluator.BinaryIoU(a, b)
                     print(f'IoU: {iou:.6f}', flush=True)
+                    logging.info(f'IoU: {iou:.6f}')
 
             print(f'Validation MIoU: {evaluator.MIoU():.6f}', flush=True)
+            logging.info(f'Validation MIoU: {evaluator.MIoU():.6f}')
             print('<done>')
     del net
     del out

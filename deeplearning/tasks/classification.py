@@ -19,10 +19,9 @@ from backend import settings
 @shared_task
 def training(args):
     logs_dir = os.path.join(settings.TRAINING_DIR, 'logs/')
-    preds_dir = os.path.join(settings.TRAINING_DIR, 'predictions/')
     ckpts_dir = os.path.join(settings.TRAINING_DIR, 'ckpts/')
     os.makedirs(os.path.dirname(logs_dir), exist_ok=True)
-    os.makedirs(os.path.dirname(preds_dir), exist_ok=True)
+    os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
 
     args = dotdict(args)
     weight_id = args.weight_id
@@ -97,7 +96,7 @@ def training(args):
                         f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
                         f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
 
-            eddl.save(net, f'{ckpts_dir}/{weight_id}.bin', 'bin')
+            eddl.save(net, f'{ckpts_dir}/{weight_id}.bin')
             logging.info('Weights saved')
 
             logging.info('Evaluation')

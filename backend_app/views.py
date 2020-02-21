@@ -116,11 +116,11 @@ class InferenceViewSet(views.APIView):
             # Launch the inference
             # Differentiate the task and start training
             if task_name == 'classification':
-                # celery_id = classification.inference.delay(config)
-                celery_id = classification.inference(config)
+                celery_id = classification.inference.delay(config)
+                # celery_id = classification.inference(config)
             elif task_name == 'segmentation':
-                # celery_id = segmentation.inference.delay(config)
-                celery_id = segmentation.inference(config)
+                celery_id = segmentation.inference.delay(config)
+                # celery_id = segmentation.inference(config)
             else:
                 return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
 

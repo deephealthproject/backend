@@ -1,8 +1,7 @@
 import pyeddl._core.eddl as eddl
 
 
-def SegNet(in_layer, num_classes):
-    x = in_layer
+def SegNet(x, num_classes):
     x = eddl.ReLu(eddl.Conv(x, 64, [3, 3], [1, 1], "same"))
     x = eddl.ReLu(eddl.Conv(x, 64, [3, 3], [1, 1], "same"))
     x = eddl.MaxPool(x, [2, 2], [2, 2])

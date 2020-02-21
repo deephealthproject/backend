@@ -1,4 +1,4 @@
-Django<3
+Django
 djangorestframework
 markdown       # drf: Markdown support for the browsable API
 django-filter  # drf: Filtering support
