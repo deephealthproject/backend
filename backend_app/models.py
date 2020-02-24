@@ -119,7 +119,6 @@ class TrainingSetting(models.Model):
         unique_together = ["modelweights_id", "property_id"]
 
     def __str__(self):
-        # TODO maybe a name field?
         return self.value
 
 

@@ -1,22 +1,20 @@
+import datetime
+from pathlib import Path
+
+import numpy as np
+import os
+import requests
+import yaml
 from django.db.models import Q
 from rest_framework import mixins, status, views, viewsets
 from rest_framework.response import Response
 
+from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers
-# from deeplearning.tasks.classification import classification_training, classification_inference
+from backend_app import utils
 from deeplearning.tasks import classification
 from deeplearning.tasks import segmentation
 from deeplearning.utils import nn_settings
-import datetime
-import os
-import json
-import requests
-import yaml
-
-import numpy as np
-from pathlib import Path
-from backend import celery_app, settings
-from backend_app import utils
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -259,7 +257,8 @@ class PropertyViewSet(mixins.ListModelMixin,
 
 class StatusView(views.APIView):
     """
-    This  API allows the frontend to query the status of a training or inference, identified by a `process_id` (which is returned by `/train` or `/inference` APIs).
+    This  API allows the frontend to query the status of a training or inference, identified by a `process_id`
+    (which is returned by `/train` or `/inference` APIs).
     """
 
     def get(self, request):
@@ -352,7 +351,7 @@ class TrainViewSet(views.APIView):
                     error = {"Error": f"Model weight with id `{weight.pretrained_on_id}` does not exist"}
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            weight.save()
+            weight.save()  # Generate an id for the weight
             ckpts_dir = os.path.join(settings.TRAINING_DIR, 'ckpts/')
             weight.location = Path(f'{ckpts_dir}/{weight.id}.bin').absolute()
             weight.save()

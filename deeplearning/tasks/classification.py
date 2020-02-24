@@ -30,7 +30,7 @@ def training(args):
     if weight.pretrained_on:
         pretrained = weight.pretrained_on.location
     save_stdout = sys.stdout
-    size = [28, 28]  # todo: create a property for size
+    size = [args.input_h, args.input_w]  # Height, width
     try:
         model = bindings.models_binding.get(args.model_id)
     except KeyError:
@@ -139,7 +139,7 @@ def inference(args):
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     pretrained = weight.location
     save_stdout = sys.stdout
-    size = [28, 28]  # todo: create a property for size
+    size = [args.input_h, args.input_w]  # Height, width
     try:
         model = bindings.models_binding.get(args.model_id)
     except KeyError:

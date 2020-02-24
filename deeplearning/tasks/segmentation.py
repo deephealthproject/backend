@@ -52,7 +52,7 @@ def training(args):
     if weight.pretrained_on:
         pretrained = weight.pretrained_on.location
     save_stdout = sys.stdout
-    size = [192, 192]  # size of images
+    size = [args.input_h, args.input_w]  # Height, width
     # ctype = ecvl.ColorType.GRAY
     try:
         model = bindings.models_binding.get(args.model_id)
@@ -195,7 +195,7 @@ def inference(args):
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     pretrained = weight.location
     save_stdout = sys.stdout
-    size = [192, 192]  # size of images
+    size = [args.input_h, args.input_w]  # Height, width
     # ctype = ecvl.ColorType.GRAY
     try:
         model = bindings.models_binding.get(args.model_id)

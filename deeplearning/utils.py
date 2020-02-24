@@ -17,6 +17,9 @@ def nn_settings(modelweight, hyperparams, mode='training'):
             'dataset_id': modelweight.dataset_id_id,
             'pretrained': modelweight.pretrained_on_id,
 
+            'input_h': int(hyperparams.get('Input height')),
+            'input_w': int(hyperparams.get('Input width')),
+
             'lr': float(hyperparams.get('Learning rate')),
             'epochs': int(hyperparams.get('Epochs')),
             'loss': str(hyperparams.get('Loss function')),
