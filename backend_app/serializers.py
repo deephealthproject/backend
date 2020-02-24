@@ -13,7 +13,8 @@ class AllowedPropSerializer(serializers.ModelSerializer):
 class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'path', 'task_id']
+        write_only_fields = ['path', 'task_id']  # Only for post
 
 
 class DropDownSerializer(serializers.Serializer):

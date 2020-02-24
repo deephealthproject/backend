@@ -10,6 +10,9 @@ from deeplearning.utils import nn_settings
 import datetime
 import os
 import json
+import requests
+import yaml
+
 import numpy as np
 from pathlib import Path
 from backend import celery_app, settings
@@ -44,6 +47,7 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
 
 
 class DatasetViewSet(mixins.ListModelMixin,
+                     mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
     """
     This method returns the datasets list that should be loaded in the power user component,
@@ -57,14 +61,37 @@ class DatasetViewSet(mixins.ListModelMixin,
     serializer_class = serializers.DatasetSerializer
 
     def get_queryset(self):
-        a = datetime.datetime.now()
-        from django.utils import timezone
-
-        now = timezone.now()
         task_id = self.request.query_params.get('task_id')
         if task_id:
             self.queryset = models.Dataset.objects.filter(task_id=task_id)
         return self.queryset
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Download the yml file in url
+        url = serializer.validated_data['path']
+        dataset_name = serializer.validated_data['name']
+        dataset_out_path = f'{settings.DATASETS_DIR}/{dataset_name}.yml'
+        if Path(f'{settings.DATASETS_DIR}/{dataset_name}.yml').exists():
+            return Response({'error': f'The dataset `{dataset_name}` already exists'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            r = requests.get(url, allow_redirects=True)
+            if r.status_code == 200:
+                yaml_content = yaml.load(r.content, Loader=yaml.FullLoader)
+                with open(f'{settings.DATASETS_DIR}/{dataset_name}.yml', 'w') as f:
+                    yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
+
+                # Update the path
+                serializer.save(path=dataset_out_path)
+                headers = self.get_success_headers(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except requests.exceptions.RequestException:
+            # URL malformed
+            return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class InferenceViewSet(views.APIView):

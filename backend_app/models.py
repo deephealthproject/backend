@@ -16,7 +16,6 @@ class Task(models.Model):
 class Dataset(models.Model):
     name = models.CharField(max_length=32)
     path = models.CharField(max_length=2048)
-    ispretraining = models.BooleanField()
 
     task_id = models.ForeignKey(Task, on_delete=models.PROTECT)
 

@@ -169,3 +169,4 @@ CELERY_TASK_SERIALIZER = 'json'
 
 TRAINING_DIR = os.path.join(BASE_DIR, 'data', 'training')
 INFERENCE_DIR = os.path.join(BASE_DIR, 'data', 'inference')
+DATASETS_DIR = os.path.join(BASE_DIR, 'data', 'datasets')
