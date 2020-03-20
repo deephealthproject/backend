@@ -27,7 +27,7 @@ DATASETS_DIR='data/datasets'
 RABBITMQ_BROKER_URL='amqp://guest:guest@localhost'
 
 # Celery settings
-CELERY_ACCEPT_CONTENT = 'json' # list of comma separated values
-CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
-CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT='json' # list of comma separated values
+CELERY_RESULT_BACKEND='db+sqlite:///results.sqlite'
+CELERY_TASK_SERIALIZER='json'
 
