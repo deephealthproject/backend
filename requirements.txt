@@ -9,6 +9,9 @@ celery   # Runs training processes
 sqlalchemy  # Required by celery
 opencv-python-headless
 requests
+psycopg2-binary # Allow to connect to PostgreSQL database
+django-environ  # Utilize 12factor inspired environment variables to configure Django application
+gunicorn        # WSGI implementation for a production deploy
 
 # PyEDDL/PyECVL requirements
 numpy
