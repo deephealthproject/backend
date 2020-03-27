@@ -12,42 +12,36 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 import json
+import environ
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Default config values
+env = environ.Env(
+    DEBUG=(bool, False),
+    ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
+    CORS_ORIGIN_WHITELIST=(list, []),
+    TRAINING_DIR=(environ.Path, os.path.join(BASE_DIR, 'data', 'training')),
+    INFERENCE_DIR=(environ.Path, os.path.join(BASE_DIR, 'data', 'inference')),
+    DATASETS_DIR=(environ.Path, os.path.join(BASE_DIR, 'data', 'datasets')),
+    CELERY_ACCEPT_CONTENT=(list, ['json']),
+    CELERY_RESULT_BACKEND=(str, 'db+sqlite:///results.sqlite'),
+    CELERY_TASK_SERIALIZER=(str, 'json')
+)
 
-class Secrets:
-    def __init__(self, filename='secrets.json'):
-        self.secrets = None
-        with open(os.path.join(BASE_DIR, filename)) as f:
-            self.secrets = json.load(f)
-
-    def get_secret(self, setting):
-        """Get secret setting or fail with ImproperlyConfigured"""
-        try:
-            return self.secrets[setting]
-        except KeyError:
-            raise ImproperlyConfigured("Set the {} setting".format(setting))
-
-
-secrets = Secrets()
+env_path = os.environ.get("DJANGO_ENV", os.path.join(BASE_DIR, "config"))
+env.read_env(env_path)  # reading .env file
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = secrets.get_secret('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = [
-    'jenkins-master-deephealth-unix01',
-    'jenkins-master-deephealth-unix01.ing.unimore.it',
-    'localhost',
-    '127.0.0.1',
-    'deephealth-gpu',
-    '155.185.48.170'
-]
+# List of allowed hosts
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 # Application definition
 INSTALLED_APPS = [
@@ -96,12 +90,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    # read os.environ['DATABASE_URL'] and raises ImproperlyConfigured exception if not found
+    'default': env.db()
 }
 
 # DATABASES = {
@@ -149,24 +140,23 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
-
-# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-STATIC_URL = '/backend/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_URL = env('STATIC_URL')
 APPEND_SLASH = True
 
-CORS_ORIGIN_WHITELIST = [
-    'http://localhost:4200',
-]
+# Cross-Origin Resource Sharing (CORS) whitelist
+CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
-CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
+CELERY_BROKER_URL = env('RABBITMQ_BROKER_URL')
 
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
-CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER')
 
-TRAINING_DIR = os.path.join(BASE_DIR, 'data', 'training')
-INFERENCE_DIR = os.path.join(BASE_DIR, 'data', 'inference')
-DATASETS_DIR = os.path.join(BASE_DIR, 'data', 'datasets')
+# Set data paths
+TRAINING_DIR = env('TRAINING_DIR')
+INFERENCE_DIR = env('INFERENCE_DIR')
+DATASETS_DIR = env('DATASETS_DIR')

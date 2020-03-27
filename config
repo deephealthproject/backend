@@ -1,0 +1,33 @@
+# Allow DEBUG mode. Don't run with debug turned on in production!
+DEBUG=True
+
+# Set SECRET_KEY. Keep the secret key used in production secret!
+SECRET_KEY=
+
+# Comma separated allowed hosts
+ALLOWED_HOSTS="jenkins-master-deephealth-unix01,jenkins-master-deephealth-unix01.ing.unimore.it,localhost,127.0.0.1,deephealth-gpu,155.185.48.170"
+
+# Comma separated CORS domains
+CORS_ORIGIN_WHITELIST="http://localhost:4200"
+
+# Database connection settings
+DATABASE_URL=sqlite:///my-local-sqlite.db # SQLite DB
+#DATABASE_URL=psql://urser:un-githubbedpassword@127.0.0.1:8458/database # PostgreSQL DB
+
+# Relative path for static resources
+STATIC_URL='/backend/static/'
+
+# Data directories
+TRAINING_DIR='data/training'
+INFERENCE_DIR='data/inference'
+DATASETS_DIR='data/datasets'
+
+# RabbitMQ Credentials
+# see https://hub.docker.com/_/rabbitmq
+RABBITMQ_BROKER_URL='amqp://guest:guest@localhost'
+
+# Celery settings
+CELERY_ACCEPT_CONTENT='json' # list of comma separated values
+CELERY_RESULT_BACKEND='db+sqlite:///results.sqlite'
+CELERY_TASK_SERIALIZER='json'
+
