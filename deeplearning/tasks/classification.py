@@ -1,26 +1,27 @@
+import json
 import logging
 import sys
 from contextlib import redirect_stdout
+from pathlib import Path
 
-import os
 import numpy as np
+import os
 # import pyecvl._core.ecvl as ecvl
 import pyeddl._core.eddl as eddl
 import pyeddl._core.eddlT as eddlT
 import random
 from celery import shared_task
+from os.path import join as opjoin
 
+from backend import settings
 from backend_app import models as dj_models
 from deeplearning import bindings
 from deeplearning.utils import dotdict
-from backend import settings
 
 
 @shared_task
 def training(args):
-    logs_dir = os.path.join(settings.TRAINING_DIR, 'logs/')
-    ckpts_dir = os.path.join(settings.TRAINING_DIR, 'ckpts/')
-    os.makedirs(os.path.dirname(logs_dir), exist_ok=True)
+    ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
     os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
 
     args = dotdict(args)
@@ -48,79 +49,80 @@ def training(args):
     out = model(in_, num_classes)
     net = eddl.Model([in_], [out])
 
-    with open(f'{logs_dir}/{weight_id}.log', 'w') as f:
-        with redirect_stdout(f):
-            eddl.build(
-                net,
-                eddl.sgd(args.lr, 0.9),
-                [bindings.losses_binding.get(args.loss)],
-                [bindings.metrics_binding.get(args.metric)],
-                eddl.CS_GPU([1]) if args.gpu else eddl.CS_CPU()
-            )
-            eddl.summary(net)
+    logfile = open(Path(weight.logfile), 'w')
+    with redirect_stdout(logfile):
+        eddl.build(
+            net,
+            eddl.sgd(args.lr, 0.9),
+            [bindings.losses_binding.get(args.loss)],
+            [bindings.metrics_binding.get(args.metric)],
+            eddl.CS_GPU([1]) if args.gpu else eddl.CS_CPU()
+        )
+        eddl.summary(net)
 
-            if pretrained and os.path.exists(pretrained):
-                eddl.load(net, pretrained)
-                logging.info('Weights loaded')
+        if pretrained and os.path.exists(pretrained):
+            eddl.load(net, pretrained)
+            logging.info('Weights loaded')
 
-            logging.info('Reading dataset')
+        logging.info('Reading dataset')
 
-            images = eddlT.create([args.batch_size, d.n_channels_, size[0], size[1]])
-            labels = eddlT.create([args.batch_size, len(d.classes_)])
-            num_samples = len(d.GetSplit())
-            num_batches = num_samples // args.batch_size
-            indices = list(range(args.batch_size))
+        images = eddlT.create([args.batch_size, d.n_channels_, size[0], size[1]])
+        labels = eddlT.create([args.batch_size, len(d.classes_)])
+        num_samples = len(d.GetSplit())
+        num_batches = num_samples // args.batch_size
+        indices = list(range(args.batch_size))
 
-            for e in range(args.epochs):
-                eddl.reset_loss(net)
-                d.SetSplit('training')
-                s = d.GetSplit()
-                num_samples = len(s)
-                random.shuffle(s)
-                d.split_.training_ = s
-                d.ResetCurrentBatch()
-                # total_loss = 0.
-                # total_metric = 0.
-                for i in range(num_batches):
-                    d.LoadBatch(images, labels)
-                    images.div_(255.0)
-                    tx, ty = [images], [labels]
-                    eddl.train_batch(net, tx, ty, indices)
-                    total_loss = net.fiterr[0]
-                    total_metric = net.fiterr[1]
-                    print(
-                        f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                        f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-
-                    logging.info(
-                        f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                        f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-
-            eddl.save(net, f'{ckpts_dir}/{weight_id}.bin')
-            logging.info('Weights saved')
-
-            logging.info('Evaluation')
-            d.SetSplit('test')
-            num_samples = len(d.GetSplit())
-            num_batches = num_samples // args.batch_size
-
+        for e in range(args.epochs):
+            eddl.reset_loss(net)
+            d.SetSplit('training')
+            s = d.GetSplit()
+            num_samples = len(s)
+            random.shuffle(s)
+            d.split_.training_ = s
             d.ResetCurrentBatch()
-
+            # total_loss = 0.
+            # total_metric = 0.
             for i in range(num_batches):
                 d.LoadBatch(images, labels)
                 images.div_(255.0)
-                eddl.eval_batch(net, [images], [labels], indices)
-                # eddl.evaluate(net, [images], [labels])
-
+                tx, ty = [images], [labels]
+                eddl.train_batch(net, tx, ty, indices)
                 total_loss = net.fiterr[0]
                 total_metric = net.fiterr[1]
                 print(
-                    f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
+                    f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})', flush=True)
+
                 logging.info(
-                    f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                    f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
                     f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-            print('<done>')
+
+        eddl.save(net, f'{ckpts_dir}/{weight_id}.bin')
+        logging.info('Weights saved')
+
+        logging.info('Evaluation')
+        d.SetSplit('test')
+        num_samples = len(d.GetSplit())
+        num_batches = num_samples // args.batch_size
+
+        d.ResetCurrentBatch()
+
+        for i in range(num_batches):
+            d.LoadBatch(images, labels)
+            images.div_(255.0)
+            eddl.eval_batch(net, [images], [labels], indices)
+            # eddl.evaluate(net, [images], [labels])
+
+            total_loss = net.fiterr[0]
+            total_metric = net.fiterr[1]
+            print(
+                f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})', flush=True)
+            logging.info(
+                f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
+        print('<done>')
+    logfile.close()
     del net
     del out
     del in_
@@ -129,12 +131,10 @@ def training(args):
 
 @shared_task
 def inference(args):
-    logs_dir = os.path.join(settings.INFERENCE_DIR, 'logs/')
-    preds_dir = os.path.join(settings.INFERENCE_DIR, 'predictions/')
-    os.makedirs(os.path.dirname(logs_dir), exist_ok=True)
-    os.makedirs(os.path.dirname(preds_dir), exist_ok=True)
-
     args = dotdict(args)
+    inference_id = args.inference_id
+    inference = dj_models.Inference.objects.get(id=inference_id)
+    batch_size = args.test_batch_size
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     pretrained = weight.location
@@ -150,7 +150,12 @@ def inference(args):
     except KeyError:
         return -1
 
-    dataset = dataset(dataset_path, args.batch_size, size)
+    if dataset is None:
+        # Binding does not exist. it's a single image dataset
+        # Use as dataset "stub" the dataset on which model has been trained
+        dataset = bindings.dataset_binding.get(weight.dataset_id.id)
+
+    dataset = dataset(dataset_path, batch_size, size)
     d = dataset.d
     num_classes = dataset.num_classes
     in_ = eddl.Input([1, size[0], size[1]])
@@ -158,63 +163,70 @@ def inference(args):
     out = model(layer, num_classes)  # out is already softmaxed
     net = eddl.Model([in_], [out])
 
-    with open(f'{logs_dir}/{weight_id}.log', 'w') as f:
-        with redirect_stdout(f):
-            eddl.build(
-                net,
-                eddl.sgd(),
-                [bindings.losses_binding.get(args.loss)],
-                [bindings.metrics_binding.get(args.metric)],
-            )
+    logfile = open(inference.logfile, 'w')
+    outputfile = open(inference.outputfile, 'w')
+    with redirect_stdout(logfile):
+        # Save args to file
+        print('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
-            eddl.summary(net)
+        eddl.build(
+            net,
+            eddl.sgd(0.001),
+            [bindings.losses_binding.get(args.loss)],
+            [bindings.metrics_binding.get(args.metric)],
+        )
 
-            if args.gpu:
-                eddl.toGPU(net, [1])
+        eddl.summary(net)
 
-            if os.path.exists(pretrained):
-                eddl.load(net, pretrained)
-                logging.info('Weights loaded')
-            else:
-                return -1
-            logging.info('Reading dataset')
+        if args.gpu:
+            eddl.toGPU(net, [1])
 
-            images = eddlT.create([args.batch_size, d.n_channels_, size[0], size[1]])
-            labels = eddlT.create([args.batch_size, len(d.classes_)])
-            indices = list(range(args.batch_size))
+        if os.path.exists(pretrained):
+            eddl.load(net, pretrained)
+            logging.info('Weights loaded')
+        else:
+            return -1
+        logging.info('Reading dataset')
 
-            logging.info('Starting inference')
-            d.SetSplit('test')
-            num_samples = len(d.GetSplit())
-            num_batches = num_samples // args.batch_size
-            preds = np.empty((0, num_classes + 1), np.float64)
+        images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
+        # labels = eddlT.create([batch_size, 1])
+        labels = eddlT.create([batch_size, num_classes])
 
-            d.ResetCurrentBatch()
+        logging.info('Starting inference')
+        d.SetSplit('test')
+        num_samples = len(d.GetSplit())
+        num_batches = num_samples // batch_size
+        preds = np.empty((0, num_classes), np.float64)
 
-            # start_index = d.current_batch_[d.current_split_] * d.batch_size_
-            # samples = d.GetSplit()[start_index:start_index + d.batch_size_]
-            # names = [d.samples_[s].location_ for s in samples]
+        for b in range(num_batches):
+            d.LoadBatch(images, labels)
+            images.div_(255.0)
+            eddl.forward(net, [images])
 
-            for b in range(num_batches):
-                d.LoadBatch(images, labels)
-                images.div_(255.0)
-                eddl.eval_batch(net, [images], [labels], indices)
-                total_loss = net.fiterr[0]
-                total_metric = net.fiterr[1]
-                print(
-                    f'Evaluation {b + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-                logging.info(
-                    f'Evaluation {b + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-                # Save network predictions
-                for i in range(args.batch_size):
-                    pred = np.array(eddlT.select(eddl.getTensor(out), i), dtype=np.float64)
-                    gt = np.argmax(np.array(labels)[indices])
-                    pred = np.append(pred, gt).reshape((1, num_classes + 1))
-                    preds = np.append(preds, pred, axis=0)
-            print('<done>')
-            np.save(f'{preds_dir}/{weight_id}.npy', preds.astype(np.float64))
+            # total_loss = net.fiterr[0]
+            # total_metric = net.fiterr[1]
+            print(f'Inference {b + 1}/{num_batches}', flush=True)
+            logging.info(f'Inference {b + 1}/{num_batches}')
+
+            # print(
+            #     f'Evaluation {b + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+            #     f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
+            # logging.info(
+            #     f'Evaluation {b + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+            #     f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
+            # Save network predictions
+            for i in range(batch_size):
+                pred = np.array(eddlT.select(eddl.getTensor(out), i), copy=False)
+                # gt = np.argmax(np.array(labels)[indices])
+                # pred = np.append(pred, gt).reshape((1, num_classes + 1))
+                preds = np.append(preds, pred, axis=0)
+                pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
+                # print(f'{pred_name};{pred}')
+                outputfile.write(f'{pred_name};{pred.tolist()}\n')
+        print('<done>', flush=True)
+        # np.save(f'{preds_dir}/{weight_id}.npy', preds.astype(np.float64))
+    logfile.close()
+    outputfile.close()
     del net
     del out
     del in_

@@ -1,26 +1,47 @@
 import uuid
 from django.db import models
+from backend import settings
+from os.path import join as opjoin
 
 
-class Task(models.Model):
-    name = models.CharField(max_length=32)
+# def default_logfile_path(basedir, *args):
+#     return opjoin(basedir, *args, f'{uuid.uuid4().hex}.log')
+
+
+def generate_file_path(filename, *args):
+    return opjoin(*args, f'{filename}')
+
+
+class AllowedProperty(models.Model):
+    """
+    This model keeps track of default and allowed values of the models.
+
+    It is useful to provide default and admissible values for empty projects.
+    """
+    property_id = models.ForeignKey('Property', on_delete=models.PROTECT)
+    model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
+
+    allowed_value = models.CharField(max_length=200, null=True, blank=True)
+    default_value = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
-        indexes = [models.Index(fields=['name'])]
-        ordering = ['id']
+        ordering = ['model_id']
+        unique_together = ["model_id", "property_id"]
+        verbose_name_plural = "Allowed properties"
 
     def __str__(self):
-        return self.name
+        return f'{self.model_id.name} - {self.property_id.name}'
 
 
 class Dataset(models.Model):
     name = models.CharField(max_length=32)
     path = models.CharField(max_length=2048)
 
-    task_id = models.ForeignKey(Task, on_delete=models.PROTECT)
+    is_single_image = models.BooleanField(default=False)
+    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
 
     class Meta:
-        indexes = [models.Index(fields=['name'])]
+        indexes = [models.Index(fields=['is_single_image'])]
         ordering = ['id']
 
     def __str__(self):
@@ -34,6 +55,9 @@ class Inference(models.Model):
 
     # Celery generates a random uuid4
     celery_id = models.CharField(max_length=50, null=True, blank=True)
+    # logfile = models.FilePathField(path=opjoin(settings.INFERENCE_DIR, 'logs'), null=True, blank=True)
+    logfile = models.CharField(max_length=2048, null=True, blank=True)
+    outputfile = models.CharField(max_length=2048, null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
@@ -47,7 +71,7 @@ class Model(models.Model):
     name = models.CharField(max_length=32)
     location = models.CharField(max_length=2048)
 
-    task_id = models.ForeignKey(Task, on_delete=models.PROTECT)
+    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -62,12 +86,13 @@ class ModelWeights(models.Model):
     name = models.CharField(max_length=200)
 
     model_id = models.ForeignKey(Model, on_delete=models.PROTECT)
-    task_id = models.ForeignKey(Task, on_delete=models.PROTECT)
+    # task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
     dataset_id = models.ForeignKey(Dataset, on_delete=models.PROTECT)
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
 
     # Celery generates a random uuid4
     celery_id = models.CharField(max_length=50, null=True, blank=True)
+    logfile = models.CharField(max_length=2048, null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
@@ -81,7 +106,7 @@ class ModelWeights(models.Model):
 class Project(models.Model):
     name = models.CharField(max_length=32)
 
-    task_id = models.ForeignKey(Task, on_delete=models.PROTECT)
+    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
     modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.SET_NULL, null=True, blank=True)
     inference_id = models.ForeignKey(Inference, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -108,6 +133,17 @@ class Property(models.Model):
         return self.name
 
 
+class Task(models.Model):
+    name = models.CharField(max_length=32)
+
+    class Meta:
+        indexes = [models.Index(fields=['name'])]
+        ordering = ['id']
+
+    def __str__(self):
+        return self.name
+
+
 class TrainingSetting(models.Model):
     modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
     property_id = models.ForeignKey(Property, on_delete=models.CASCADE)
@@ -120,24 +156,3 @@ class TrainingSetting(models.Model):
 
     def __str__(self):
         return self.value
-
-
-class AllowedProperty(models.Model):
-    """
-    This model keeps track of default and allowed values of the models.
-
-    It is useful to provide default and admissible values for empty projects.
-    """
-    property_id = models.ForeignKey(Property, on_delete=models.PROTECT)
-    model_id = models.ForeignKey(Model, on_delete=models.CASCADE)
-
-    allowed_value = models.CharField(max_length=200, null=True, blank=True)
-    default_value = models.CharField(max_length=200, null=True, blank=True)
-
-    class Meta:
-        ordering = ['model_id']
-        unique_together = ["model_id", "property_id"]
-        verbose_name_plural = "Allowed properties"
-
-    def __str__(self):
-        return f'{self.model_id.name} - {self.property_id.name}'
