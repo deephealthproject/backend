@@ -3,7 +3,7 @@ from rest_framework import routers
 from backend_app import views
 from backend_app.routers import HybridRouter
 
-router = HybridRouter(trailing_slash=False)
+router = HybridRouter()
 # router = routers.DefaultRouter(trailing_slash=False)
 
 router.get_api_root_view().cls.__name__ = "DeepHealth Backend"
@@ -21,6 +21,8 @@ router.register(r'trainingSettings', views.TrainingSettingViewSet)
 router.register(r'weights', views.ModelWeightsViewSet)
 
 router.add_api_view('inference', path('inference', views.InferenceViewSet.as_view(), name='inference'))
+router.add_api_view('inferenceSingle',
+                    path('inferenceSingle', views.InferenceSingleViewSet.as_view(), name='inferenceSingle'))
 router.add_api_view('status', path('status', views.StatusView.as_view(), name='status'))
 router.add_api_view('stopProcess', path('stopProcess', views.StopProcessViewSet.as_view(), name='stopProcess'))
 router.add_api_view('train', path('train', views.TrainViewSet.as_view(), name='train'))

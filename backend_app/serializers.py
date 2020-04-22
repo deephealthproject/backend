@@ -28,7 +28,17 @@ class InferenceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Inference
-        exclude = ['stats']
+        fields = ['project_id', 'modelweights_id', 'dataset_id']
+        # exclude = ['stats']
+
+
+class InferenceSingleSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField()
+    image_url = serializers.URLField()
+
+    class Meta:
+        model = models.Inference
+        exclude = ['stats', 'dataset_id', 'logfile']
 
 
 class ModelSerializer(serializers.ModelSerializer):
@@ -40,7 +50,9 @@ class ModelSerializer(serializers.ModelSerializer):
 class ModelWeightsSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ModelWeights
-        exclude = ['location', 'celery_id']
+        fields = ['id', 'name']
+        read_only_fields = ['location', 'celery_id', 'logfile', "model_id", "dataset_id", "pretrained_on"]
+        write_only_fields = ['id']
 
 
 # class PretrainingSerializer(serializers.ModelSerializer):

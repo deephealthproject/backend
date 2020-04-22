@@ -5,21 +5,23 @@ import numpy as np
 import os
 import requests
 import yaml
+import uuid
 from django.db.models import Q
-from rest_framework import mixins, status, views, viewsets
+from os.path import join as opjoin
+from rest_framework import mixins, status, views, viewsets, generics
 from rest_framework.response import Response
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers
 from backend_app import utils
-from deeplearning.tasks import classification
-from deeplearning.tasks import segmentation
+from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
                          viewsets.GenericViewSet):
     """
+    ## GET
     This method returns the values that a property can assume depending on the model employed.
     It provides a default value and a comma separated list of values to choose from.
 
@@ -48,14 +50,20 @@ class DatasetViewSet(mixins.ListModelMixin,
                      mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
     """
+    ## GET
     This method returns the datasets list that should be loaded in the power user component,
     on the left side of the page, in the same panel as the models list.
 
-    ## Parameters
+    ### Parameters
     `task_id` _(optional)_: integer
         Integer representing a task used to retrieve dataset of a specific task.
+
+    ## POST
+    This API uploads a dataset YAML file and stores it in the backend.
+    The url must contain the url of a dataset, e.g.
+    [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1).
     """
-    queryset = models.Dataset.objects.all()
+    queryset = models.Dataset.objects.filter(is_single_image=False)
     serializer_class = serializers.DatasetSerializer
 
     def get_queryset(self):
@@ -94,6 +102,7 @@ class DatasetViewSet(mixins.ListModelMixin,
 
 class InferenceViewSet(views.APIView):
     """
+    ## POST
     This is the main entry point to start the inference.
     It is mandatory to specify a pre-trained model and a dataset for finetuning.
     """
@@ -102,66 +111,52 @@ class InferenceViewSet(views.APIView):
         serializer = serializers.InferenceSerializer(data=request.data)
 
         if serializer.is_valid():
-            i = models.Inference(
-                modelweights_id=serializer.validated_data['modelweights_id'],
-                dataset_id=serializer.validated_data['dataset_id'],
-                stats=''  # todo change
-            )
-            i.save()
-            p_id = serializer.data['project_id']
-            project = models.Project.objects.get(id=p_id)
-            project.inference_id = i
-            project.save()
-            task_name = project.task_id.name.lower()
+            return utils.do_inference(serializer)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            hyperparams = {}
-            # Check if current model has some custom properties and load them
-            props_allowed = models.AllowedProperty.objects.filter(model_id=i.modelweights_id.model_id_id)
-            if props_allowed:
-                for p in props_allowed:
-                    hyperparams[p.property_id.name] = p.default_value
 
-            # Load default values for those properties not in props_allowed
-            props_general = models.Property.objects.all()
-            for p in props_general:
-                if hyperparams.get(p.name) is None:
-                    hyperparams[p.name] = p.default
+class InferenceSingleViewSet(views.APIView):
+    """
+    ## POST
+    This API allows the inference of a single image.
+    It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replace by
+    the url of the image to process.
+    """
 
-            # Retrieve configuration of the specified modelweights
-            qs = models.TrainingSetting.objects.filter(modelweights_id=i.modelweights_id)
+    def post(self, request):
+        serializer = serializers.InferenceSingleSerializer(data=request.data)
 
-            # Create the dict of training settings
-            for setting in qs:
-                hyperparams[setting.property_id.name] = setting.value
+        if serializer.is_valid():
+            image_url = serializer.validated_data['image_url']
+            project_id = serializer.validated_data['project_id']
+            task_id = models.Project.objects.get(id=project_id).task_id
 
-            config = nn_settings(modelweight=i.modelweights_id, hyperparams=hyperparams, mode='inference')
-            if not config:
-                return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Create a dataset with the single image to process
+            dummy_dataset = f'name: {image_url}\n' \
+                            f'description: {image_url} auto-generated dataset\n' \
+                            f'images: [{image_url}]\n' \
+                            f'split:\n' \
+                            f'  test: [0]'
+            # Save dataset and get id
+            d = models.Dataset(name=f'single-image-dataset', task_id=task_id, path='', is_single_image=True)
+            d.save()
+            yaml_content = yaml.load(dummy_dataset, Loader=yaml.FullLoader)
+            with open(f'{settings.DATASETS_DIR}/single_image_dataset_{d.id}.yml', 'w') as f:
+                yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
 
-            # Launch the inference
-            # Differentiate the task and start training
-            if task_name == 'classification':
-                celery_id = classification.inference.delay(config)
-                # celery_id = classification.inference(config)
-            elif task_name == 'segmentation':
-                celery_id = segmentation.inference.delay(config)
-                # celery_id = segmentation.inference(config)
-            else:
-                return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+            # Update the path
+            d.path = f'{settings.DATASETS_DIR}/single_image_dataset_{d.id}.yml'
+            d.save()
 
-            i.celery_id = celery_id.id
-            i.save()
-            response = {
-                "result": "ok",
-                "process_id": celery_id.id
-            }
-            return Response(response, status=status.HTTP_201_CREATED)
+            serializer.validated_data['dataset_id'] = d
+            return utils.do_inference(serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ModelViewSet(mixins.ListModelMixin,
                    viewsets.GenericViewSet):
     """
+    ## GET
     This API allows the client to know which Neural Network models are available in the system in order to allow
     their selection.
 
@@ -182,14 +177,19 @@ class ModelViewSet(mixins.ListModelMixin,
 
 
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
+                          mixins.RetrieveModelMixin,
                           viewsets.GenericViewSet):
     """
+    ## GET
     When 'use pre-trained' is selected, it is possible to query the backend passing a `model_id` to obtain a list
     of dataset on which it was pretrained.
 
     ## Parameters
     `model_id`: integer
         Required integer representing the model.
+
+    ## PUT
+    This method updates an existing model weight (e.g. change the name).
     """
     queryset = models.ModelWeights.objects.all()
     serializer_class = serializers.ModelWeightsSerializer
@@ -200,17 +200,81 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         self.queryset = models.ModelWeights.objects.filter(model_id=model_id)
         return self.queryset
 
+    def get_obj(self, id):
+        try:
+            return models.ModelWeights.objects.get(id=id)
+        except models.ModelWeights.DoesNotExist:
+            return None
+
+    def put(self, request, *args, **kwargs):
+        weight = self.get_obj(request.data['id'])
+        if not weight:
+            error = {"Error": f"Weight {request.data['id']} does not exist"}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(weight, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            # Returns all the elements with model_id in request
+            queryset = models.ModelWeights.objects.filter(model_id=weight.model_id)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OutputViewSet(views.APIView):
+    """
+    ## GET
+    This API provides information about an `inference` process.In classification task it returns the list
+    of images and an array composed of the classes prediction scores.
+    In segmentation task it returns the URLs of the segmented images.
+    """
+
+    @staticmethod
+    def trunc(values, decs=0):
+        return np.trunc(values * 10 ** decs) / (10 ** decs)
+
+    def get(self, request):
+        if not self.request.query_params.get('process_id'):
+            error = {'Error': f'Missing required parameter `process_id`'}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        process_id = self.request.query_params.get('process_id')
+        infer = models.Inference.objects.filter(celery_id=process_id)
+        if not infer:
+            # already deleted weight/training or inference
+            return Response({"result": "Process stopped before finishing or non existing"},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        infer = infer.first()
+        # Differentiate classification and segmentation
+        # if infer.modelweights_id.task_id.name.lower() == 'classification':
+        outputs = open(opjoin(settings.OUTPUTS_DIR, infer.outputfile), 'r')
+        if infer.modelweights_id.model_id.task_id.name.lower() == 'classification':
+            lines = outputs.read().splitlines()
+            lines = [line.split(';') for line in lines]
+            # preds = self.trunc(preds, decs=8)
+        else:
+            # Segmentation
+            # output file contains path of files
+            uri = request.build_absolute_uri(settings.MEDIA_URL)
+            lines = outputs.read().splitlines()
+            lines = [l.replace(settings.OUTPUTS_DIR, uri) for l in lines]
+        response = {'outputs': lines}
+        return Response(response, status=status.HTTP_200_OK)
+
 
 class ProjectViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
     """
-    View which provides _get_, _put_, and _post_ methods:
+    ## GET
+    Lists all the available projects or a single one using `projects/{id}` link.
 
-    - _get_ retrieves all the projects or a single one using `projects/{id}` link.
-    - _post_ lets to create a new project.
-    - _put_ updates a project.
+    ## POST
+    Lets to create a new project.
+
+    ## PUT
+    Updates a project.
     """
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
@@ -238,10 +302,11 @@ class PropertyViewSet(mixins.ListModelMixin,
                       mixins.RetrieveModelMixin,
                       viewsets.GenericViewSet):
     """
+    ## GET
     This API allows the client to know which properties are "globally" supported by the backend.
 
 
-    A model can have different default and allowed values if the `/allowdProperties` return an entry.
+    A model can have different default and allowed values if the `/allowedProperties` return an entry.
     """
     queryset = models.Property.objects.all()
     serializer_class = serializers.PropertyListSerializer
@@ -257,6 +322,7 @@ class PropertyViewSet(mixins.ListModelMixin,
 
 class StatusView(views.APIView):
     """
+    ## GET
     This  API allows the frontend to query the status of a training or inference, identified by a `process_id`
     (which is returned by `/train` or `/inference` APIs).
     """
@@ -266,23 +332,26 @@ class StatusView(views.APIView):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
         process_id = self.request.query_params.get('process_id')
-        try:
-            # _ = models.ModelWeights.objects.get(id=process_id)
-            weight = models.ModelWeights.objects.get(celery_id=process_id)
-        except models.ModelWeights.DoesNotExist:
+
+        if models.ModelWeights.objects.filter(celery_id=process_id).exists():
+            process = models.ModelWeights.objects.filter(celery_id=process_id).first()
+        elif models.Inference.objects.filter(celery_id=process_id).exists():
+            process = models.Inference.objects.filter(celery_id=process_id).first()
+        else:
             res = {
                 "result": "error",
-                "error": "This model weights has been deleted due a training stop."
+                "error": "Process not found."
             }
             return Response(data=res, status=status.HTTP_404_NOT_FOUND)
+
         try:
-            with open(f'data/logs/{weight.id}.log', 'r') as f:
+            with open(process.logfile, 'r') as f:
                 lines = f.read().splitlines()
                 last_line = lines[-1]
         except:
             res = {
                 "result": "error",
-                "error": "Server error"
+                "error": "Log file not found"
             }
             return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         if last_line == '<done>':
@@ -302,9 +371,47 @@ class StatusView(views.APIView):
         return Response(data=res, status=status.HTTP_200_OK)
 
 
+class StopProcessViewSet(views.APIView):
+    """
+    ## POST
+    Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs).
+    """
+
+    def post(self, request):
+        serializer = serializers.StopProcessSerializer(data=request.data)
+        if serializer.is_valid():
+            process_id = serializer.data['process_id']
+            weights = models.ModelWeights.objects.filter(celery_id=process_id)
+            infer = models.Inference.objects.filter(celery_id=process_id)
+            response = {"result": "Process stopped"}
+            if not weights.exists() and not infer.exists():
+                # already deleted weight/training or inference
+                return Response({"result": "Process already stopped or non existing"}, status=status.HTTP_404_NOT_FOUND)
+            elif weights:
+                weights = weights.first()
+                celery_id = weights.celery_id
+                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
+                response = {"result": "Training stopped"}
+                # delete the ModelWeights entry from db
+                # also delete ModelWeights fk in project
+                weights.delete()
+            elif infer:
+                infer = infer.first()
+                celery_id = infer.celery_id
+                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
+                response = {"result": "Inference stopped"}
+                # delete the ModelWeights entry from db
+                infer.delete()
+
+            # todo delete log file? delete weight file?
+            return Response(response, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class TaskViewSet(mixins.ListModelMixin,
                   viewsets.GenericViewSet):
     """
+    ## GET
     This API allows the client to know which task this platform supports. e.g. classification or segmentation tasks.
     """
     queryset = models.Task.objects.all()
@@ -313,6 +420,7 @@ class TaskViewSet(mixins.ListModelMixin,
 
 class TrainViewSet(views.APIView):
     """
+    ## POST
     This is the main entry point to start the training of a model on a dataset.
     It is mandatory to specify a model to be trained and a pretraining dataset.
     When providing a weights_id, the training starts from the pre-trained model.
@@ -339,6 +447,11 @@ class TrainViewSet(views.APIView):
                 error = {"Error": f"Project with id `{serializer.data['project_id']}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
+            # Check if dataset and model are both for same task
+            if weight.model_id.task_id != weight.dataset_id.task_id:
+                error = {"Error": f"Model and dataset must belong to the same task"}
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
             project = models.Project.objects.get(id=serializer.data['project_id'])
             task_name = project.task_id.name.lower()
             weight.task_id = project.task_id
@@ -352,8 +465,10 @@ class TrainViewSet(views.APIView):
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             weight.save()  # Generate an id for the weight
-            ckpts_dir = os.path.join(settings.TRAINING_DIR, 'ckpts/')
-            weight.location = Path(f'{ckpts_dir}/{weight.id}.bin').absolute()
+            ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
+            weight.location = Path(opjoin(ckpts_dir, f'{weight.id}.bin')).absolute()
+            # Create a logfile
+            weight.logfile = models.generate_file_path(f'{uuid.uuid4().hex}.log', settings.TRAINING_DIR, 'logs')
             weight.save()
 
             hyperparams = {}
@@ -397,10 +512,10 @@ class TrainViewSet(views.APIView):
             # Differentiate the task and start training
             if task_name == 'classification':
                 celery_id = classification.training.delay(config)
-                # celery_id = classification(args)
+                # celery_id = classification.training(config)
             elif task_name == 'segmentation':
                 celery_id = segmentation.training.delay(config)
-                # celery_id = segmentation(args)
+                # celery_id = segmentation.training(config)
             else:
                 return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -415,7 +530,8 @@ class TrainViewSet(views.APIView):
 
             response = {
                 "result": "ok",
-                "process_id": celery_id.id
+                "process_id": celery_id.id,
+                "weight_id": weight.id
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -424,6 +540,7 @@ class TrainViewSet(views.APIView):
 class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
                              viewsets.GenericViewSet):
     """
+    ## GET
     This API returns the value used for a property in a specific training
     (a modelweights). It requires a modelweights_id, indicating a training process, and a property_id.
 
@@ -443,73 +560,3 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
         property_id = self.request.query_params.get('property_id')
         self.queryset = models.TrainingSetting.objects.filter(modelweights_id=modelweights_id, property_id=property_id)
         return self.queryset
-
-
-class StopProcessViewSet(views.APIView):
-    """
-    Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs).
-    """
-
-    def post(self, request):
-        serializer = serializers.StopProcessSerializer(data=request.data)
-        if serializer.is_valid():
-            process_id = serializer.data['process_id']
-            weights = models.ModelWeights.objects.filter(celery_id=process_id)
-            infer = models.Inference.objects.filter(celery_id=process_id)
-            response = {"result": "Process stopped"}
-            if not weights and not infer:
-                # already deleted weight/training or inference
-                return Response({"result": "Process already stopped or non existing"}, status=status.HTTP_404_NOT_FOUND)
-            elif weights:
-                weights = weights.first()
-                celery_id = weights.celery_id
-                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
-                response = {"result": "Training stopped"}
-                # delete the ModelWeights entry from db
-                # also delete ModelWeights fk in project
-                weights.delete()
-            elif infer:
-                infer = infer.first()
-                celery_id = infer.celery_id
-                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
-                response = {"result": "Inference stopped"}
-                # delete the ModelWeights entry from db
-                infer.delete()
-
-            # todo delete log file? delete weight file?
-            return Response(response, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class OutputViewSet(views.APIView):
-    """
-    This API provides information about an `inference` process.In classification task it returns the list
-    of images and an array composed of the classes predictionsand the ground truth as last element.
-    In segmentation task it returns the URLs of the segmented images.
-    """
-
-    def trunc(self, values, decs=0):
-        return np.trunc(values * 10 ** decs) / (10 ** decs)
-
-    def get(self, request):
-        preds_dir = os.path.join(settings.INFERENCE_DIR, 'predictions')
-        process_id = request.GET['process_id']
-        infer = models.Inference.objects.filter(celery_id=process_id)
-        if not infer:
-            # already deleted weight/training or inference
-            return Response({"result": "Process stopped before finishing or non existing"},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        infer = infer.first()
-        # Differentiate classification and segmentation
-        if infer.modelweights_id.task_id.name.lower() == 'classification':
-            preds = np.load(f'{preds_dir}/{infer.modelweights_id.id}.npy').astype(np.float64)
-            # response = json.dumps({'outputs': preds}, cls=utils.NumpyEncoder)
-            # preds[:, :-1] = np.around(preds[:, :-1], 4)
-            preds = self.trunc(preds, decs=8)
-            response = {'outputs': preds.tolist()}
-            return Response(response, status=status.HTTP_200_OK)
-        else:
-            # Segmentation
-            pass
-        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

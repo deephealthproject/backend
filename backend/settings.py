@@ -17,9 +17,15 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+TRAINING_DIR = os.path.join(DATA_DIR, 'training')
+INFERENCE_DIR = os.path.join(DATA_DIR, 'inference')
+DATASETS_DIR = os.path.join(DATA_DIR, 'datasets')
+OUTPUTS_DIR = os.path.join(INFERENCE_DIR, 'outputs')
+
 
 class Secrets:
-    def __init__(self, filename='secrets.json'):
+    def __init__(self, filename):
         self.secrets = None
         with open(os.path.join(BASE_DIR, filename)) as f:
             self.secrets = json.load(f)
@@ -29,25 +35,18 @@ class Secrets:
         try:
             return self.secrets[setting]
         except KeyError:
-            raise ImproperlyConfigured("Set the {} setting".format(setting))
+            raise ImproperlyConfigured(f'Set the {setting} setting')
 
 
-secrets = Secrets()
+secrets = Secrets('secrets.json')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = secrets.get_secret('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = secrets.get_secret('DEBUG')
 
-ALLOWED_HOSTS = [
-    'jenkins-master-deephealth-unix01',
-    'jenkins-master-deephealth-unix01.ing.unimore.it',
-    'localhost',
-    '127.0.0.1',
-    'deephealth-gpu',
-    '155.185.48.170'
-]
+ALLOWED_HOSTS = secrets.get_secret('ALLOWED_HOSTS')
 
 # Application definition
 INSTALLED_APPS = [
@@ -147,16 +146,19 @@ USE_L10N = True
 
 USE_TZ = True
 
+APPEND_SLASH = False
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 # STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/backend/static/'
-APPEND_SLASH = True
+# Base url to serve media files
+MEDIA_URL = '/backend/media/'
+# Path where media is stored
+MEDIA_ROOT = OUTPUTS_DIR
 
-CORS_ORIGIN_WHITELIST = [
-    'http://localhost:4200',
-]
+CORS_ORIGIN_WHITELIST = secrets.get_secret('CORS_ORIGIN_WHITELIST')
 
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
@@ -166,7 +168,3 @@ CELERY_BROKER_URL = secrets.get_secret('CELERY_BROKER_URL')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite'
 CELERY_TASK_SERIALIZER = 'json'
-
-TRAINING_DIR = os.path.join(BASE_DIR, 'data', 'training')
-INFERENCE_DIR = os.path.join(BASE_DIR, 'data', 'inference')
-DATASETS_DIR = os.path.join(BASE_DIR, 'data', 'datasets')

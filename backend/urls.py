@@ -15,6 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from backend import settings
+from django.conf.urls.static import static
 from rest_framework.urlpatterns import format_suffix_patterns
 
 urlpatterns = [
@@ -23,5 +25,8 @@ urlpatterns = [
     # For authentication
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # urlpatterns = format_suffix_patterns(urlpatterns)
