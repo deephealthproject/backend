@@ -7,8 +7,8 @@ It receives a configuration from the front-end then runs a deep learning pipelin
 ## Installation
 ### Requirements
 - Python3.6+
-- PyECVL 0.1.0+
-- PyEDDL 0.2.0+
+- curl -- `sudo apt install curl`
+- PyEDDL 0.4.0+ and PyECVL 0.1.0+
 
 Clone and install back-end with:
 ```bash
@@ -24,7 +24,7 @@ Create a `secrets.json` file in `~/backend/` with the following structure:
   "CELERY_BROKER_URL": "amqp://<username>:<password>@localhost"
 }
 ```
-Generate a new "SECRET_KEY" with `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+Generate a new SECRET_KEY with `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
 ` and set username e password for celery. 
 
 
@@ -48,4 +48,7 @@ python manage.py createsuperuser
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>
+
+# Start celery
+python manage.py celery
 ```
