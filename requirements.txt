@@ -7,7 +7,6 @@ uritemplate    # drf: Generate OpenAPI
 django-cors-headers # drf: enables CORS
 celery   # Runs training processes
 sqlalchemy  # Required by celery
-opencv-python-headless
 requests
 
 # PyEDDL/PyECVL requirements
