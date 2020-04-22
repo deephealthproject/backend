@@ -9,9 +9,11 @@ from rest_framework import response, reverse, routers, views
 class HybridRouter(routers.DefaultRouter):
     # From http://stackoverflow.com/a/23321478/1459749
     # and https://bitbucket.org/hub9/django-hybrid-router
+    # and https://stackoverflow.com/a/46163870
     def __init__(self, *args, **kwargs):
         super(HybridRouter, self).__init__(*args, **kwargs)
         self._api_view_urls = {}
+        self.trailing_slash = '/?'
 
     def add_api_view(self, name, url):
         self._api_view_urls[name] = url
