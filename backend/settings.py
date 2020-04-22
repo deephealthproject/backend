@@ -139,7 +139,7 @@ USE_TZ = True
 APPEND_SLASH = False
 
 # Set data paths
-DATA_DIR = env(BASE_DIR, 'data')
+DATA_DIR = env('DATA_DIR')
 TRAINING_DIR = os.path.join(DATA_DIR, 'training')
 INFERENCE_DIR = os.path.join(DATA_DIR, 'inference')
 DATASETS_DIR = os.path.join(DATA_DIR, 'datasets')
