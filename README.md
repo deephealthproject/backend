@@ -5,32 +5,36 @@ The DeepHealth back-end interacts with the front-end, serving various APIs;
 It receives a configuration from the front-end then runs a deep learning pipeline based on PyECVL and PyEDDL.  
 
 ## Installation
+
 ### Requirements
 - Python3.6+
 - curl -- `sudo apt install curl`
 - PyEDDL 0.4.0+ and PyECVL 0.1.0+
 
+
+
 Clone and install back-end with:
+
 ```bash
 cd ~
 git clone https://github.com/deephealthproject/backend.git
 cd backend
 pip install -r requirements.txt
 ```
-Create a `secrets.json` file in `~/backend/` with the following structure:
-```json
-{
-  "SECRET_KEY": "<key>",
-  "CELERY_BROKER_URL": "amqp://<username>:<password>@localhost"
-}
+Generate a new SECRET_KEY with:
+
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key;print(get_random_secret_key())'
 ```
-Generate a new SECRET_KEY with `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
-` and set username e password for celery. 
+
+Edit the `~/config` file to configure the application (SECRET_KEY, DB and RabbitMQ connection and other optional Django settings).
 
 
 ##### Celery
 Install with: `sudo apt install rabbitmq-server` 
 and run the celery deamon with: `python manage.py celery`.
+
+
 
 ## First run
 
