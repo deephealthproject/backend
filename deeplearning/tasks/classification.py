@@ -45,7 +45,7 @@ def training(args):
     dataset = dataset(dataset_path, args.batch_size, size)
     d = dataset.d
     num_classes = dataset.num_classes
-    in_ = eddl.Input([1, size[0], size[1]])
+    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
     out = model(in_, num_classes)
     net = eddl.Model([in_], [out])
 
@@ -158,7 +158,7 @@ def inference(args):
     dataset = dataset(dataset_path, batch_size, size)
     d = dataset.d
     num_classes = dataset.num_classes
-    in_ = eddl.Input([1, size[0], size[1]])
+    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
     layer = in_
     out = model(layer, num_classes)  # out is already softmaxed
     net = eddl.Model([in_], [out])
