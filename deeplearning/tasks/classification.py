@@ -33,14 +33,14 @@ def training(args):
     save_stdout = sys.stdout
     size = [args.input_h, args.input_w]  # Height, width
     try:
-        model = bindings.models_binding.get(args.model_id)
+        model = bindings.models_binding[args.model_id]
     except KeyError:
-        return -1
+        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-        dataset = bindings.dataset_binding.get(args.dataset_id)
+        dataset = bindings.dataset_binding[args.dataset_id]
     except KeyError:
-        return -1
+        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
     dataset = dataset(dataset_path, args.batch_size, size)
     d = dataset.d
@@ -141,14 +141,14 @@ def inference(args):
     save_stdout = sys.stdout
     size = [args.input_h, args.input_w]  # Height, width
     try:
-        model = bindings.models_binding.get(args.model_id)
+        model = bindings.models_binding[args.model_id]
     except KeyError:
-        return -1
+        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
         dataset = bindings.dataset_binding.get(args.dataset_id)
-    except KeyError:
-        return -1
+    except:
+        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
     if dataset is None:
         # Binding does not exist. it's a single image dataset

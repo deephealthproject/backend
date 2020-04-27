@@ -16,6 +16,7 @@ metrics_binding = {
 dataset_binding = {
     1: datasets.MNIST,
     5: datasets.ISICSEG,
+    55: datasets.ISICCLAS,
 }
 
 models_binding = {

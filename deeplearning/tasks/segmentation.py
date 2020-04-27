@@ -54,22 +54,20 @@ def training(args):
     size = [args.input_h, args.input_w]  # Height, width
     # ctype = ecvl.ColorType.GRAY
     try:
-        model = bindings.models_binding.get(args.model_id)
+        model = bindings.models_binding[args.model_id]
     except KeyError:
-        return 1
+        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-        dataset = bindings.dataset_binding.get(args.dataset_id)
+        dataset = bindings.dataset_binding[args.dataset_id]
     except KeyError:
-        return 1
-    except:
-        return 1
+        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
     # dataset = dataset(dataset_path, args.batch_size, args.split)
     dataset = dataset(dataset_path, args.batch_size, size)
     d = dataset.d
     num_classes = dataset.num_classes
-    in_ = eddl.Input([3, size[0], size[1]])
+    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
     out = model(in_, num_classes)
     out_sigm = eddl.Sigmoid(out)
     net = eddl.Model([in_], [out_sigm])
@@ -194,16 +192,16 @@ def inference(args):
     pretrained = weight.location
     save_stdout = sys.stdout
     size = [args.input_h, args.input_w]  # Height, width
-    # ctype = ecvl.ColorType.GRAY
+
     try:
         model = bindings.models_binding.get(args.model_id)
     except KeyError:
-        return 1
+        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
         dataset = bindings.dataset_binding.get(args.dataset_id)
     except KeyError:
-        return 1
+        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
     logging.info('Reading dataset')
     dataset = dataset(dataset_path, batch_size, size)
