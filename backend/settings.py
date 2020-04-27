@@ -26,7 +26,8 @@ env = environ.Env(
     DATA_DIR=(environ.Path, os.path.join(BASE_DIR, 'data')),
     CELERY_ACCEPT_CONTENT=(list, ['json']),
     CELERY_RESULT_BACKEND=(str, 'db+sqlite:///results.sqlite'),
-    CELERY_TASK_SERIALIZER=(str, 'json')
+    CELERY_TASK_SERIALIZER=(str, 'json'),
+    EDDL_WITH_CUDA=(bool, False),
 )
 
 env_path = os.environ.get("DJANGO_ENV", os.path.join(BASE_DIR, "config"))

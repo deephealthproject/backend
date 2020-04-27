@@ -1,4 +1,6 @@
 from backend_app import models
+from backend import settings
+import ctypes
 
 
 # class dotdict(dict):
@@ -10,6 +12,35 @@ from backend_app import models
 class dotdict(dict):
     def __getattr__(self, val):
         return self[val]
+
+
+def cuda_is_available():
+    libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
+    for libname in libnames:
+        try:
+            cuda = ctypes.CDLL(libname)
+        except OSError:
+            continue
+        else:
+            break
+    else:
+        raise OSError("could not load any of: " + ' '.join(libnames))
+    CUDA_SUCCESS = 0
+    nGpus = ctypes.c_int()
+    result = ctypes.c_int()
+    error_str = ctypes.c_char_p()
+
+    result = cuda.cuInit(0)
+    if result != CUDA_SUCCESS:
+        cuda.cuGetErrorString(result, ctypes.byref(error_str))
+        print("cuInit failed with error code %d: %s" % (result, error_str.value.decode()))
+        return False
+    result = cuda.cuDeviceGetCount(ctypes.byref(nGpus))
+    if result != CUDA_SUCCESS:
+        cuda.cuGetErrorString(result, ctypes.byref(error_str))
+        print("cuDeviceGetCount failed with error code %d: %s" % (result, error_str.value.decode()))
+        return False
+    return True
 
 
 def nn_settings(modelweight, hyperparams, dataset_id=None, mode='training'):
@@ -37,7 +68,7 @@ def nn_settings(modelweight, hyperparams, dataset_id=None, mode='training'):
             'split': 'training',
             'log_interval': 50,
             'save_model': True,
-            'gpu': True,
+            'gpu': settings.env('EDDL_WITH_CUDA'),
         }
     except TypeError as e:
         print(f"Type error: {e}")
@@ -73,7 +104,7 @@ def inference_settings(inference_id, hyperparams, dataset_id=None):
             'split': 'test',
             'log_interval': 50,
             'save_model': True,
-            'gpu': True,
+            'gpu': settings.env('EDDL_WITH_CUDA'),
         }
     except TypeError as e:
         print(f"Type error: {e}")
