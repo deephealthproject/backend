@@ -1,0 +1,72 @@
+[
+{
+  "model": "backend_app.property",
+  "pk": 1,
+  "fields": {
+    "name": "Learning rate",
+    "type": "float",
+    "default": "0.0001",
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 2,
+  "fields": {
+    "name": "Loss function",
+    "type": "list",
+    "default": "CrossEntropy",
+    "values": "CrossEntropy,SoftCrossEntropy,MSE"
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 3,
+  "fields": {
+    "name": "Epochs",
+    "type": "integer",
+    "default": "50",
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 4,
+  "fields": {
+    "name": "Batch size",
+    "type": "integer",
+    "default": "1",
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 5,
+  "fields": {
+    "name": "Metric",
+    "type": "list",
+    "default": "CategoricalAccuracy",
+    "values": "CategoricalAccuracy,MSE,MAE,MRE,Sum"
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 6,
+  "fields": {
+    "name": "Input height",
+    "type": "integer",
+    "default": "100",
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 7,
+  "fields": {
+    "name": "Input width",
+    "type": "integer",
+    "default": "100",
+    "values": null
+  }
+}
+]

@@ -9,7 +9,7 @@ It receives a configuration from the front-end then runs a deep learning pipelin
 ### Requirements
 - Python3.6+
 - curl -- `sudo apt install curl`
-- PyEDDL 0.4.0+ and PyECVL 0.1.0+
+- PyEDDL 0.4.0+ and PyECVL 0.1.0
 
 
 
@@ -49,6 +49,9 @@ python manage.py migrate
 
 # Creating an admin user
 python manage.py createsuperuser
+
+# Load db default entries
+python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>

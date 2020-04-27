@@ -1,0 +1,29 @@
+[
+{
+  "model": "backend_app.model",
+  "pk": 1,
+  "fields": {
+    "name": "LeNet",
+    "location": "LeNetPath",
+    "task_id": 1
+  }
+},
+{
+  "model": "backend_app.model",
+  "pk": 2,
+  "fields": {
+    "name": "vgg",
+    "location": "vggpath",
+    "task_id": 1
+  }
+},
+{
+  "model": "backend_app.model",
+  "pk": 4,
+  "fields": {
+    "name": "SegNet",
+    "location": "path",
+    "task_id": 2
+  }
+}
+]

@@ -1,0 +1,16 @@
+[
+{
+  "model": "backend_app.task",
+  "pk": 1,
+  "fields": {
+    "name": "Classification"
+  }
+},
+{
+  "model": "backend_app.task",
+  "pk": 2,
+  "fields": {
+    "name": "Segmentation"
+  }
+}
+]

@@ -1,0 +1,32 @@
+[
+{
+  "model": "backend_app.dataset",
+  "pk": 1,
+  "fields": {
+    "name": "MNIST",
+    "path": "/mnt/data/DATA/mnist/mnist.yml",
+    "is_single_image": false,
+    "task_id": 1
+  }
+},
+{
+  "model": "backend_app.dataset",
+  "pk": 5,
+  "fields": {
+    "name": "ISIC segmentation",
+    "path": "/mnt/data/DATA/isic_skin_lesion/isic_segmentation.yml",
+    "is_single_image": false,
+    "task_id": 2
+  }
+},
+{
+  "model": "backend_app.dataset",
+  "pk": 55,
+  "fields": {
+    "name": "ISIC classification",
+    "path": "/mnt/data/DATA/isic_skin_lesion/isic.yml",
+    "is_single_image": false,
+    "task_id": 1
+  }
+}
+]
