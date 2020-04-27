@@ -1,6 +1,9 @@
 # Allow DEBUG mode. Don't run with debug turned on in production!
 DEBUG=True
 
+# Enable eddl CS_GPU computing service
+EDDL_WITH_CUDA=False
+
 # Set SECRET_KEY. Keep the secret key used in production secret!
 SECRET_KEY=
 
@@ -10,9 +13,10 @@ ALLOWED_HOSTS=
 # Comma separated CORS domains
 CORS_ORIGIN_WHITELIST="http://localhost:4200"
 
-# Database connection settings
-DATABASE_URL=sqlite:///my-local-sqlite.db # SQLite DB
-#DATABASE_URL=psql://urser:un-githubbedpassword@127.0.0.1:8458/database # PostgreSQL DB
+# Database connection settings - SQLite DB
+DATABASE_URL=sqlite:///my-local-sqlite.db
+# PostgreSQL DB
+#DATABASE_URL=psql://urser:un-githubbedpassword@127.0.0.1:8458/database
 
 # Relative path for static resources
 STATIC_URL='/backend/static/'
@@ -20,10 +24,8 @@ STATIC_URL='/backend/static/'
 # Base url to serve media files
 MEDIA_URL='/backend/media/'
 
-# Data directories
-TRAINING_DIR='data/training'
-INFERENCE_DIR='data/inference'
-DATASETS_DIR='data/datasets'
+# Data directory
+DATA_DIR='data'
 
 # RabbitMQ Credentials
 # see https://hub.docker.com/_/rabbitmq
@@ -33,4 +35,3 @@ RABBITMQ_BROKER_URL='amqp://guest:guest@localhost'
 CELERY_ACCEPT_CONTENT='json' # list of comma separated values
 CELERY_RESULT_BACKEND='db+sqlite:///results.sqlite'
 CELERY_TASK_SERIALIZER='json'
-
