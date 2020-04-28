@@ -1,5 +1,6 @@
 import logging
 import sys
+import json
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -40,16 +41,28 @@ class Evaluator:
 
 
 @shared_task
-def training(args):
-    ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts/')
-    os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
-
+def segment(args):
     args = dotdict(args)
+    ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts/')
+    outputfile = None
+    inference = None
+    output_dir = None
+
+    train = True if args.mode == 'training' else False
+    batch_size = args.batch_size if args.mode == 'training' else args.test_batch_size
+
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
-    pretrained = None
-    if weight.pretrained_on:
-        pretrained = weight.pretrained_on.location
+    if train:
+        os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
+        pretrained = None
+        if weight.pretrained_on:
+            pretrained = weight.pretrained_on.location
+    else:
+        inference_id = args.inference_id
+        inference = dj_models.Inference.objects.get(id=inference_id)
+        pretrained = weight.location
+
     save_stdout = sys.stdout
     size = [args.input_h, args.input_w]  # Height, width
     # ctype = ecvl.ColorType.GRAY
@@ -63,25 +76,32 @@ def training(args):
     except KeyError:
         raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
-    # dataset = dataset(dataset_path, args.batch_size, args.split)
-    dataset = dataset(dataset_path, args.batch_size, size)
+    logging.info('Reading dataset')
+    print('Reading dataset', flush=True)
+    # dataset = dataset(dataset_path, batch_size, args.split)
+    dataset = dataset(dataset_path, batch_size, size)
     d = dataset.d
     num_classes = dataset.num_classes
     in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    out = model(in_, num_classes)
-    out_sigm = eddl.Sigmoid(out)
-    net = eddl.Model([in_], [out_sigm])
+    out_ = eddl.Sigmoid(model(in_, num_classes))
+    net = eddl.Model([in_], [out_])
+    if train:
+        logfile = open(Path(weight.logfile), 'w')
+    else:
+        logfile = open(Path(inference.logfile), 'w')
+        outputfile = open(inference.outputfile, 'w')
+        output_dir = inference.outputfile[:-4] + '.d'
+        os.makedirs(output_dir, exist_ok=True)
 
-    logfile = open(Path(weight.logfile), 'w')
     with redirect_stdout(logfile):
-
+        # Save args to file
+        print('args: ' + json.dumps(args, indent=2, sort_keys=True), flush=True)
         eddl.build(
             net,
-            # eddl.sgd(args.lr, 0.9),
             eddl.adam(args.lr),
             [bindings.losses_binding.get(args.loss)],
             [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1]) if args.gpu else eddl.CS_CPU()
+            eddl.CS_GPU([1], 'low_mem') if args.gpu else eddl.CS_CPU()
         )
         eddl.summary(net)
 
@@ -89,205 +109,122 @@ def training(args):
             eddl.load(net, pretrained)
             logging.info('Weights loaded')
 
-        logging.info('Reading dataset')
-
-        images = eddlT.create([args.batch_size, d.n_channels_, size[0], size[1]])
-        gts = eddlT.create([args.batch_size, 1, size[0], size[1]])
-        num_samples = len(d.GetSplit())
-        num_batches = num_samples // args.batch_size
-        indices = list(range(args.batch_size))
-
-        d.SetSplit('validation')
-        num_samples_validation = len(d.GetSplit())
-        num_batches_validation = num_samples_validation // args.batch_size
-        evaluator = Evaluator()
-        miou = -1
-        for e in range(args.epochs):
-            d.SetSplit('training')
-            eddl.reset_loss(net)
-            s = d.GetSplit()
-            random.shuffle(s)
-            d.split_.training_ = s
-            d.ResetAllBatches()
-            for i in range(num_batches):
-                d.LoadBatch(images, gts)
-                images.div_(255.0)
-                gts.div_(255.0)
-                eddl.train_batch(net, [images], [gts], indices)
-                total_loss = net.fiterr[0]
-                total_metric = net.fiterr[1]
-                print(
-                    f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})', flush=True)
-
-                logging.info(
-                    f'Batch {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-                    f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-
-            logging.info('Evaluation')
-            d.SetSplit('validation')
-            evaluator.ResetEval()
-            for j in range(num_batches_validation):
-                print('Validation - Epoch %d/%d (batch %d/%d) ' %
-                      (e + 1, args.epochs, j + 1, num_batches_validation),
-                      end='', flush=True)
-                d.LoadBatch(images, gts)
-                images.div_(255.0)
-                gts.div_(255.0)
-                eddl.forward(net, [images])
-                output = eddl.getTensor(out_sigm)
-                for k in range(args.batch_size):
-                    img_ = eddlT.select(output, k)
-                    gts_ = eddlT.select(gts, k)
-                    a, b = np.array(img_, copy=False), np.array(gts_, copy=False)
-                    iou = evaluator.BinaryIoU(a, b)
-                    print('- IoU: %.6g ' % iou, flush=True)
-
-            last_miou = evaluator.MIoU()
-            print(f'Validation MIoU: {last_miou:.6f}', flush=True)
-            logging.info(f'Validation MIoU: {last_miou:.6f}')
-
-            if last_miou > miou:
-                miou = last_miou
-                eddl.save(net, f'{ckpts_dir}/{weight_id}.bin', 'bin')
-                logging.info('Weights saved')
-
-        # d.SetSplit('test')
-        # num_samples = len(d.GetSplit())
-        # num_batches = num_samples // args.batch_size
-        #
-        # d.ResetCurrentBatch()
-        #
-        # for i in range(num_batches):
-        #     d.LoadBatch(images, gts)
-        #     images.div_(255.0)
-        #     eddl.eval_batch(net, [images], [gts], indices)
-        #     # eddl.evaluate(net, [images], [labels])
-        #
-        #     total_loss = net.fiterr[0]
-        #     total_metric = net.fiterr[1]
-        #     print(
-        #         f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-        #         f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-        #     logging.info(
-        #         f'Evaluation {i + 1}/{num_batches} {net.lout[0].name}({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
-        #         f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
-        # print('<done>')
-    logfile.close()
-    del net
-    del out
-    del in_
-    return 0
-
-
-@shared_task
-def inference(args):
-    args = dotdict(args)
-    batch_size = args.test_batch_size
-
-    inference_id = args.inference_id
-    inference = dj_models.Inference.objects.get(id=inference_id)
-    weight_id = args.weight_id
-    weight = dj_models.ModelWeights.objects.get(id=weight_id)
-    pretrained = weight.location
-    save_stdout = sys.stdout
-    size = [args.input_h, args.input_w]  # Height, width
-
-    try:
-        model = bindings.models_binding.get(args.model_id)
-    except KeyError:
-        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
-    try:
-        dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-        dataset = bindings.dataset_binding.get(args.dataset_id)
-    except KeyError:
-        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
-
-    logging.info('Reading dataset')
-    dataset = dataset(dataset_path, batch_size, size)
-    d = dataset.d
-    num_classes = dataset.num_classes
-    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    out_ = eddl.Sigmoid(model(in_, num_classes))
-    net = eddl.Model([in_], [out_])
-
-    logfile = open(Path(inference.logfile), 'w')
-    outputfile = open(inference.outputfile, 'w')
-    output_dir = inference.outputfile[:-4] + '.d'
-    os.makedirs(output_dir, exist_ok=True)
-
-    with redirect_stdout(logfile):
-        eddl.build(
-            net,
-            # eddl.sgd(args.lr, 0.9),
-            eddl.adam(),
-            [bindings.losses_binding.get(args.loss)],
-            [bindings.metrics_binding.get(args.metric)],
-        )
-        eddl.summary(net)
-
-        if args.gpu:
-            eddl.toGPU(net, [1], "low_mem")
-
-        if os.path.exists(pretrained):
-            eddl.load(net, pretrained)
-            logging.info('Weights loaded')
-        else:
-            return -1
-
         images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
-        gts = eddlT.create([batch_size, 1, size[0], size[1]])
-        # indices = list(range(batch_size))
+        gts = eddlT.create([batch_size, 1, size[0], size[1]])  # todo change 1 with n_channels_gt_
 
-        evaluator = Evaluator()
-        d.SetSplit('test')
-        num_samples = len(d.GetSplit())
-        num_batches = num_samples // batch_size
+        logging.info(f'Starting {args.mode}')
+        print(f'Starting {args.mode}', flush=True)
+        if train:
+            d.SetSplit('training')
+            num_samples_train = len(d.GetSplit())
+            num_batches_train = num_samples_train // batch_size
 
-        logging.info('test')
-        evaluator.ResetEval()
-        for j in range(num_batches):
-            d.LoadBatch(images, gts)
-            images.div_(255.0)
-            gts.div_(255.0)
-            # eddl.forward(net, [images])
+            d.SetSplit('validation')
+            num_samples_val = len(d.GetSplit())
+            num_batches_val = num_samples_val // batch_size
+            evaluator = Evaluator()
+            indices = list(range(batch_size))
+            miou = -1
+            for e in range(args.epochs):
+                eddl.reset_loss(net)
+                d.SetSplit('training')
+                s = d.GetSplit()
+                random.shuffle(s)
+                d.split_.training_ = s
+                d.ResetAllBatches()
+                for i in range(num_batches_train):
+                    d.LoadBatch(images, gts)
+                    images.div_(255.0)
+                    gts.div_(255.0)
+                    eddl.train_batch(net, [images], [gts], indices)
+                    total_loss = net.fiterr[0]
+                    total_metric = net.fiterr[1]
+                    print(
+                        f'Train Epoch: {e + 1}/{args.epochs} [{i + 1}/{num_batches_train}] {net.lout[0].name}'
+                        f'({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                        f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})', flush=True)
+
+                    logging.info(
+                        f'Train Epoch: {e + 1}/{args.epochs} [{i + 1}/{num_batches_train}] {net.lout[0].name}'
+                        f'({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
+                        f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
+
+                if len(d.split_.validation_) > 0:
+                    logging.info(f'Validation {e + 1}/{args.epochs}')
+                    print(f'Validation {e + 1}/{args.epochs}', flush=True)
+                    d.SetSplit('validation')
+                    evaluator.ResetEval()
+                    for j in range(num_batches_val):
+                        print(f'Val Epoch: {e + 1}/{args.epochs}  [{i + 1}/{num_batches_val}] ', end='', flush=True)
+                        d.LoadBatch(images, gts)
+                        images.div_(255.0)
+                        gts.div_(255.0)
+                        eddl.forward(net, [images])
+                        output = eddl.getTensor(out_)
+                        for k in range(batch_size):
+                            img_ = eddlT.select(output, k)
+                            gts_ = eddlT.select(gts, k)
+                            a, b = np.array(img_, copy=False), np.array(gts_, copy=False)
+                            iou = evaluator.BinaryIoU(a, b)
+                            print('- IoU: %.6g ' % iou, flush=True)
+
+                    last_miou = evaluator.MIoU()
+                    print(f'Val Epoch: {e + 1}/{args.epochs} - MIoU: {last_miou:.6f}', flush=True)
+                    logging.info(f'Val Epoch: {e + 1}/{args.epochs} - MIoU: {last_miou:.6f}')
+
+                    if last_miou > miou:
+                        miou = last_miou
+                        eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                        logging.info('Weights saved')
+                        print('Weights saved')
+                else:
+                    eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                    print('Weights saved')
+        else:
+            d.SetSplit('test')
+            num_samples_test = len(d.GetSplit())
+            num_batches_test = num_samples_test // batch_size
             indices = np.arange(0, batch_size).tolist()
-            eddl.eval_batch(net, [images], [gts], indices)
-            preds = eddl.getTensor(out_)
-            for k in range(batch_size):
-                pred = eddlT.select(preds, k)
-                gt = eddlT.select(gts, k)
+            for j in range(num_batches_test):
+                print(f'Infer Batch {j + 1}/{num_batches_test}', flush=True)
+                logging.info(f'Infer Batch {j + 1}/{num_batches_test}')
+                d.LoadBatch(images, gts)
+                images.div_(255.0)
+                gts.div_(255.0)
+                # eddl.forward(net, [images])
+                eddl.eval_batch(net, [images], [gts], indices)
+                preds = eddl.getTensor(out_)
 
-                pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
-                iou = evaluator.BinaryIoU(pred_np, gt)
-                print(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}', flush=True)
-                logging.info(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}')
-                pred_np[pred_np >= 0.5] = 255
-                pred_np[pred_np < 0.5] = 0
+                for k in range(batch_size):
+                    pred = eddlT.select(preds, k)
+                    gt = eddlT.select(gts, k)
+                    pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
+                    # iou = evaluator.BinaryIoU(pred_np, gt)
+                    # print(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}', flush=True)
+                    # logging.info(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}')
+                    pred_np[pred_np >= 0.5] = 255
+                    pred_np[pred_np < 0.5] = 0
 
-                orig_image_path = d.samples_[d.GetSplit()[j * batch_size + k]].location_
-                orig_image_name = Path(orig_image_path).name.split('.')
-                orig_image_name = orig_image_name[0] + '.png'
+                    orig_image_path = d.samples_[d.GetSplit()[j * batch_size + k]].location_
+                    orig_image_name = Path(orig_image_path).name.split('.')
+                    orig_image_name = orig_image_name[0] + '.png'
 
-                # TODO PyECVL need to be updated with latest bindings
-                # img_ecvl = ecvl.TensorToImage(img)
-                # img_ecvl.colortype_ = ecvl.ColorType.GRAY
-                # img_ecvl.channels_ = "xyc"
-                # ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
+                    # TODO PyECVL need to be updated with latest bindings
+                    # img_ecvl = ecvl.TensorToImage(img)
+                    # img_ecvl.colortype_ = ecvl.ColorType.GRAY
+                    # img_ecvl.channels_ = "xyc"
+                    # ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
 
-                # TODO resize of the gts
-                # original_image = ecvl.ImRead(orig_image_path)
-                # original_dims = original_image.dims_[:-1]
+                    # TODO resize of the gts
+                    # original_image = ecvl.ImRead(orig_image_path)
+                    # original_dims = original_image.dims_[:-1]
 
-                eddlT.save(pred, opjoin(output_dir, orig_image_name))
-                outputfile.write(opjoin(output_dir, orig_image_name) + '\n')
-
-        print(f'Validation MIoU: {evaluator.MIoU():.6f}', flush=True)
-        logging.info(f'Validation MIoU: {evaluator.MIoU():.6f}')
-        print('<done>')
+                    eddlT.save(pred, opjoin(output_dir, orig_image_name))
+                    outputfile.write(opjoin(output_dir, orig_image_name) + '\n')
+            outputfile.close()
+        print('<done>', flush=True)
     logfile.close()
-    outputfile.close()
     del net
     del out_
     del in_
-    return 0
+    return

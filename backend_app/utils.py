@@ -87,7 +87,7 @@ def do_inference(serializer):
         celery_id = classification.classificate.delay(config)
         # celery_id = classification.inference(config)
     elif task_name == 'segmentation':
-        celery_id = segmentation.inference.delay(config)
+        celery_id = segmentation.segment.delay(config)
         # celery_id = segmentation.inference(config)
     else:
         return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)

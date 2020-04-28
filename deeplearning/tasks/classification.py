@@ -81,7 +81,7 @@ def classificate(args):
             eddl.sgd(args.lr, 0.9),
             [bindings.losses_binding.get(args.loss)],
             [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1]) if args.gpu else eddl.CS_CPU()
+            eddl.CS_GPU([1], 'low_mem') if args.gpu else eddl.CS_CPU()
         )
         eddl.summary(net)
 

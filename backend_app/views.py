@@ -516,7 +516,7 @@ class TrainViewSet(views.APIView):
                 celery_id = classification.classificate.delay(config)
                 # celery_id = classification.training(config)
             elif task_name == 'segmentation':
-                celery_id = segmentation.training.delay(config)
+                celery_id = segmentation.segment.delay(config)
                 # celery_id = segmentation.training(config)
             else:
                 return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
