@@ -94,9 +94,9 @@ def inference_settings(inference_id, hyperparams, dataset_id=None):
             'input_h': int(hyperparams.get('Input height')),
             'input_w': int(hyperparams.get('Input width')),
 
-            # 'lr': float(hyperparams.get('Learning rate')),
-            'epochs': int(hyperparams.get('Epochs')),
-            'loss': str(hyperparams.get('Loss function')),
+            'lr': 0.1,  # not used in inference
+            'epochs': int(hyperparams.get('Epochs')),  # not used in inference
+            'loss': str(hyperparams.get('Loss function')),  # not used in inference
             'metric': str(hyperparams.get('Metric')),
             'test_batch_size': 1,
 

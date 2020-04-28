@@ -247,6 +247,8 @@ class OutputViewSet(views.APIView):
         infer = infer.first()
         # Differentiate classification and segmentation
         # if infer.modelweights_id.task_id.name.lower() == 'classification':
+        if not os.path.exists(opjoin(settings.OUTPUTS_DIR, infer.outputfile)):
+            return Response({"result": "Output file not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         outputs = open(opjoin(settings.OUTPUTS_DIR, infer.outputfile), 'r')
         if infer.modelweights_id.model_id.task_id.name.lower() == 'classification':
             lines = outputs.read().splitlines()
@@ -511,7 +513,7 @@ class TrainViewSet(views.APIView):
 
             # Differentiate the task and start training
             if task_name == 'classification':
-                celery_id = classification.training.delay(config)
+                celery_id = classification.classificate.delay(config)
                 # celery_id = classification.training(config)
             elif task_name == 'segmentation':
                 celery_id = segmentation.training.delay(config)

@@ -84,7 +84,7 @@ def do_inference(serializer):
     # Launch the inference
     # Differentiate the task and start training
     if task_name == 'classification':
-        celery_id = classification.inference.delay(config)
+        celery_id = classification.classificate.delay(config)
         # celery_id = classification.inference(config)
     elif task_name == 'segmentation':
         celery_id = segmentation.inference.delay(config)

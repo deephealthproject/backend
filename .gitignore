@@ -1,8 +1,6 @@
 # Project files
 venv/
-venv-linux/
-versions/
-
+config
 secrets.json
 *.sqlite*
 
