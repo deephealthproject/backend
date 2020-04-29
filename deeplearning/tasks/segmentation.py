@@ -43,7 +43,7 @@ class Evaluator:
 @shared_task
 def segment(args):
     args = dotdict(args)
-    ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts/')
+    ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
     outputfile = None
     inference = None
     output_dir = None
@@ -54,7 +54,6 @@ def segment(args):
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     if train:
-        os.makedirs(os.path.dirname(ckpts_dir), exist_ok=True)
         pretrained = None
         if weight.pretrained_on:
             pretrained = weight.pretrained_on.location
