@@ -437,7 +437,7 @@ class TrainViewSet(views.APIView):
             weight.dataset_id_id = serializer.data['dataset_id']
             weight.model_id_id = serializer.data['model_id']
 
-            if not models.Dataset.objects.filter(id=weight.dataset_id_id).exists():
+            if not models.Dataset.objects.filter(id=weight.dataset_id_id, is_single_image=False).exists():
                 error = {"Error": f"Dataset with id `{weight.dataset_id_id}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
