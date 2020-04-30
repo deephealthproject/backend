@@ -1,4 +1,4 @@
-import pyeddl._core.eddl as eddl
+import pyeddl.eddl as eddl
 
 
 def SegNet(x, num_classes):

@@ -1,4 +1,4 @@
-import pyeddl._core.eddl as eddl
+import pyeddl.eddl as eddl
 
 
 def LeNet(in_layer, num_classes):

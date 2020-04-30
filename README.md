@@ -9,7 +9,7 @@ It receives a configuration from the front-end then runs a deep learning pipelin
 ### Requirements
 - Python3.6+
 - curl -- `sudo apt install curl`
-- PyEDDL 0.4.0+ and PyECVL 0.1.0
+- **PyECVL 0.2.0** and **PyEDDL 0.6.0**
 
 
 

@@ -6,8 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import os
-import pyeddl._core.eddl as eddl
-import pyeddl._core.eddlT as eddlT
+import pyeddl.eddl as eddl
+import pyeddl.eddlT as eddlT
+import pyecvl.ecvl as ecvl
 import random
 from celery import shared_task
 from os.path import join as opjoin
@@ -75,10 +76,13 @@ def segment(args):
     except KeyError:
         raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
+    augs = ecvl.SequentialAugmentationContainer([
+        ecvl.AugResizeDim(size),
+    ])
+
     logging.info('Reading dataset')
     print('Reading dataset', flush=True)
-    # dataset = dataset(dataset_path, batch_size, args.split)
-    dataset = dataset(dataset_path, batch_size, size)
+    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([augs, augs, augs]))
     d = dataset.d
     num_classes = dataset.num_classes
     in_ = eddl.Input([d.n_channels_, size[0], size[1]])
@@ -95,12 +99,14 @@ def segment(args):
     with redirect_stdout(logfile):
         # Save args to file
         print('args: ' + json.dumps(args, indent=2, sort_keys=True), flush=True)
+        logging.info('args: ' + json.dumps(args, indent=2, sort_keys=True))
+
         eddl.build(
             net,
             eddl.adam(args.lr),
             [bindings.losses_binding.get(args.loss)],
             [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1], 'low_mem') if args.gpu else eddl.CS_CPU()
+            eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
         )
         eddl.summary(net)
 
@@ -109,24 +115,22 @@ def segment(args):
             logging.info('Weights loaded')
 
         images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
-        gts = eddlT.create([batch_size, 1, size[0], size[1]])  # todo change 1 with n_channels_gt_
+        gts = eddlT.create([batch_size, d.n_channels_gt_, size[0], size[1]])
 
         logging.info(f'Starting {args.mode}')
         print(f'Starting {args.mode}', flush=True)
         if train:
-            d.SetSplit('training')
-            num_samples_train = len(d.GetSplit())
+            num_samples_train = len(d.GetSplit(ecvl.SplitType.training))
             num_batches_train = num_samples_train // batch_size
-
-            d.SetSplit('validation')
-            num_samples_val = len(d.GetSplit())
+            num_samples_val = len(d.GetSplit(ecvl.SplitType.validation))
             num_batches_val = num_samples_val // batch_size
+
             evaluator = Evaluator()
             indices = list(range(batch_size))
             miou = -1
             for e in range(args.epochs):
                 eddl.reset_loss(net)
-                d.SetSplit('training')
+                d.SetSplit(ecvl.SplitType.training)
                 s = d.GetSplit()
                 random.shuffle(s)
                 d.split_.training_ = s
@@ -151,7 +155,7 @@ def segment(args):
                 if len(d.split_.validation_) > 0:
                     logging.info(f'Validation {e + 1}/{args.epochs}')
                     print(f'Validation {e + 1}/{args.epochs}', flush=True)
-                    d.SetSplit('validation')
+                    d.SetSplit(ecvl.SplitType.validation)
                     evaluator.ResetEval()
                     for j in range(num_batches_val):
                         print(f'Val Epoch: {e + 1}/{args.epochs}  [{i + 1}/{num_batches_val}] ', end='', flush=True)
@@ -180,7 +184,7 @@ def segment(args):
                     eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
                     print('Weights saved')
         else:
-            d.SetSplit('test')
+            d.SetSplit(ecvl.SplitType.test)
             num_samples_test = len(d.GetSplit())
             num_batches_test = num_samples_test // batch_size
             indices = np.arange(0, batch_size).tolist()
@@ -204,21 +208,23 @@ def segment(args):
                     pred_np[pred_np >= 0.5] = 255
                     pred_np[pred_np < 0.5] = 0
 
-                    orig_image_path = d.samples_[d.GetSplit()[j * batch_size + k]].location_
+                    orig_image_path = d.samples_[d.GetSplit()[j * batch_size + k]].location_[0]
                     orig_image_name = Path(orig_image_path).name.split('.')
                     orig_image_name = orig_image_name[0] + '.png'
 
-                    # TODO PyECVL need to be updated with latest bindings
-                    # img_ecvl = ecvl.TensorToImage(img)
-                    # img_ecvl.colortype_ = ecvl.ColorType.GRAY
-                    # img_ecvl.channels_ = "xyc"
-                    # ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
+                    # Save image to file
+                    img_ecvl = ecvl.TensorToImage(pred)
+                    if num_classes == 1:
+                        img_ecvl.colortype_ = ecvl.ColorType.GRAY
+                    else:
+                        img_ecvl.colortype_ = ecvl.ColorType.BGR
+                    img_ecvl.channels_ = "xyc"
+                    # Convert to original size
+                    # TODO use size_ member of Sample - wait for new bindings
+                    original_image = ecvl.ImRead(orig_image_path)
+                    ecvl.ResizeDim(img_ecvl, img_ecvl, [original_image.dims_[0], original_image.dims_[1]])
 
-                    # TODO resize of the gts
-                    # original_image = ecvl.ImRead(orig_image_path)
-                    # original_dims = original_image.dims_[:-1]
-
-                    eddlT.save(pred, opjoin(output_dir, orig_image_name))
+                    ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
                     outputfile.write(opjoin(output_dir, orig_image_name) + '\n')
             outputfile.close()
         print('<done>', flush=True)

@@ -1,3 +1,5 @@
+pyecvl>=0.2.0
+
 Django
 djangorestframework
 markdown       # drf: Markdown support for the browsable API

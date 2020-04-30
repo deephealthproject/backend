@@ -1,4 +1,4 @@
-import pyeddl._core.eddl as eddl
+import pyeddl.eddl as eddl
 
 
 def VGG16(x, num_classes):
