@@ -50,7 +50,7 @@ class ModelSerializer(serializers.ModelSerializer):
 class ModelWeightsSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'celery_id']
         read_only_fields = ['location', 'celery_id', 'logfile', "model_id", "dataset_id", "pretrained_on"]
         write_only_fields = ['id']
 

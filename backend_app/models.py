@@ -121,7 +121,7 @@ class Project(models.Model):
 class Property(models.Model):
     name = models.CharField(max_length=50)
     type = models.CharField(max_length=50)
-    default = models.CharField(max_length=50)
+    default = models.CharField(max_length=50, null=True, blank=True)
     values = models.CharField(max_length=1000, null=True, blank=True)
 
     class Meta:

@@ -68,5 +68,35 @@
     "default": "100",
     "values": null
   }
+},
+{
+  "model": "backend_app.property",
+  "pk": 8,
+  "fields": {
+    "name": "Training augmentations",
+    "type": "string",
+    "default": null,
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 9,
+  "fields": {
+    "name": "Validation augmentations",
+    "type": "string",
+    "default": null,
+    "values": null
+  }
+},
+{
+  "model": "backend_app.property",
+  "pk": 10,
+  "fields": {
+    "name": "Test augmentations",
+    "type": "string",
+    "default": null,
+    "values": null
+  }
 }
 ]

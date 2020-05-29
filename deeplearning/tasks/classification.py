@@ -38,8 +38,6 @@ def classificate(args):
     else:
         inference_id = args.inference_id
         inference = dj_models.Inference.objects.get(id=inference_id)
-        logfile = open(inference.logfile, 'w')
-        outputfile = open(inference.outputfile, 'w')
         pretrained = weight.location
     save_stdout = sys.stdout
     size = [args.input_h, args.input_w]  # Height, width
@@ -58,13 +56,26 @@ def classificate(args):
         # Use as dataset "stub" the dataset on which model has been trained
         dataset = bindings.dataset_binding.get(weight.dataset_id.id)
 
-    augs = ecvl.SequentialAugmentationContainer([
-        ecvl.AugResizeDim(size),
-    ])
+    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
+    train_augs = basic_augs
+    val_augs = basic_augs
+    test_augs = basic_augs
+    if args.train_augs:
+        train_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.train_augs)
+        ])
+    if args.val_augs:
+        val_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.val_augs)
+        ])
+    if args.test_augs:
+        test_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.test_augs)
+        ])
 
     logging.info('Reading dataset')
     print('Reading dataset', flush=True)
-    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([augs, augs, augs]))
+    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
     d = dataset.d
     num_classes = dataset.num_classes
     in_ = eddl.Input([d.n_channels_, size[0], size[1]])

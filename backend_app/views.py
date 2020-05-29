@@ -196,9 +196,12 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
     params = ['model_id']
 
     def get_queryset(self):
-        model_id = self.request.query_params.get('model_id')
-        self.queryset = models.ModelWeights.objects.filter(model_id=model_id)
-        return self.queryset
+        if self.action == 'list':
+            model_id = self.request.query_params.get('model_id')
+            self.queryset = models.ModelWeights.objects.filter(model_id=model_id)
+            return self.queryset
+        elif self.action == 'retrieve':
+            return super(ModelWeightsViewSet, self).get_queryset()
 
     def get_obj(self, id):
         try:

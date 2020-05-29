@@ -76,13 +76,26 @@ def segment(args):
     except KeyError:
         raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
 
-    augs = ecvl.SequentialAugmentationContainer([
-        ecvl.AugResizeDim(size),
-    ])
+    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
+    train_augs = basic_augs
+    val_augs = basic_augs
+    test_augs = basic_augs
+    if args.train_augs:
+        train_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.train_augs)
+        ])
+    if args.val_augs:
+        val_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.val_augs)
+        ])
+    if args.test_augs:
+        test_augs = ecvl.SequentialAugmentationContainer([
+            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.test_augs)
+        ])
 
     logging.info('Reading dataset')
     print('Reading dataset', flush=True)
-    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([augs, augs, augs]))
+    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
     d = dataset.d
     num_classes = dataset.num_classes
     in_ = eddl.Input([d.n_channels_, size[0], size[1]])

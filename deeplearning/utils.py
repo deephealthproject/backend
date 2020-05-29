@@ -11,7 +11,7 @@ import ctypes
 
 class dotdict(dict):
     def __getattr__(self, val):
-        return self[val]
+        return self.get(val)
 
 
 def cuda_is_available():
@@ -63,6 +63,8 @@ def nn_settings(modelweight, hyperparams, dataset_id=None, mode='training'):
             'metric': str(hyperparams.get('Metric')),
             'batch_size': int(hyperparams.get('Batch size')),
             'test_batch_size': 1,
+            'train_augs': (hyperparams.get('Training augmentations')),
+            'val_augs': (hyperparams.get('Validation augmentations')),
 
             'mode': mode,
             'split': 'training',
@@ -99,6 +101,7 @@ def inference_settings(inference_id, hyperparams, dataset_id=None):
             'loss': str(hyperparams.get('Loss function')),  # not used in inference
             'metric': str(hyperparams.get('Metric')),
             'test_batch_size': 1,
+            'test_augs': (hyperparams.get('Test augmentations')),
 
             'mode': 'inference',
             'split': 'test',
