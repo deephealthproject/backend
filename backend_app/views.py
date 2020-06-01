@@ -132,15 +132,21 @@ class InferenceSingleViewSet(views.APIView):
             task_id = models.Project.objects.get(id=project_id).task_id
 
             # Create a dataset with the single image to process
-            dummy_dataset = f'name: {image_url}\n' \
-                            f'description: {image_url} auto-generated dataset\n' \
-                            f'images: [{image_url}]\n' \
+            dummy_dataset = f'name: "{image_url}"\n' \
+                            f'description: "{image_url} auto-generated dataset"\n' \
+                            f'images: ["{image_url}"]\n' \
                             f'split:\n' \
                             f'  test: [0]'
             # Save dataset and get id
             d = models.Dataset(name=f'single-image-dataset', task_id=task_id, path='', is_single_image=True)
             d.save()
-            yaml_content = yaml.load(dummy_dataset, Loader=yaml.FullLoader)
+            try:
+                yaml_content = yaml.load(dummy_dataset, Loader=yaml.FullLoader)
+            except yaml.YAMLError as e:
+                d.delete()
+                print(e)
+                return Response({'error': 'Error in YAML parsing'}, status=status.HTTP_400_BAD_REQUEST)
+
             with open(f'{settings.DATASETS_DIR}/single_image_dataset_{d.id}.yml', 'w') as f:
                 yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
 
@@ -339,8 +345,10 @@ class StatusView(views.APIView):
         process_id = self.request.query_params.get('process_id')
 
         if models.ModelWeights.objects.filter(celery_id=process_id).exists():
+            process_type = 'training'
             process = models.ModelWeights.objects.filter(celery_id=process_id).first()
         elif models.Inference.objects.filter(celery_id=process_id).exists():
+            process_type = 'inference'
             process = models.Inference.objects.filter(celery_id=process_id).first()
         else:
             res = {
@@ -368,7 +376,7 @@ class StatusView(views.APIView):
         res = {
             'result': 'ok',
             'status': {
-                'process_type': 'training',
+                'process_type': process_type,
                 'process_status': process_status,
                 'process_data': last_line,
             }

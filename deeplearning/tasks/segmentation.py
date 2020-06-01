@@ -69,12 +69,20 @@ def segment(args):
     try:
         model = bindings.models_binding[args.model_id]
     except KeyError:
-        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
+        raise Exception(f'Model with id: {args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-        dataset = bindings.dataset_binding[args.dataset_id]
     except KeyError:
-        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
+        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
+
+    dataset = bindings.dataset_binding.get(args.dataset_id)
+
+    if dataset is None and not train:
+        # Binding does not exist. it's a single image dataset
+        # Use as dataset "stub" the dataset on which model has been trained
+        dataset = bindings.dataset_binding.get(weight.dataset_id.id)
+    elif dataset is None and train:
+        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
 
     basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
     train_augs = basic_augs
@@ -128,7 +136,10 @@ def segment(args):
             logging.info('Weights loaded')
 
         images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
-        gts = eddlT.create([batch_size, d.n_channels_gt_, size[0], size[1]])
+        if train:
+            gts = eddlT.create([batch_size, d.n_channels_gt_, size[0], size[1]])
+
+        # TODO create gts also in test if they exist
 
         logging.info(f'Starting {args.mode}')
         print(f'Starting {args.mode}', flush=True)
@@ -200,28 +211,27 @@ def segment(args):
             d.SetSplit(ecvl.SplitType.test)
             num_samples_test = len(d.GetSplit())
             num_batches_test = num_samples_test // batch_size
-            indices = np.arange(0, batch_size).tolist()
             for j in range(num_batches_test):
                 print(f'Infer Batch {j + 1}/{num_batches_test}', flush=True)
                 logging.info(f'Infer Batch {j + 1}/{num_batches_test}')
-                d.LoadBatch(images, gts)
+                d.LoadBatch(images)
                 images.div_(255.0)
-                gts.div_(255.0)
-                # eddl.forward(net, [images])
-                eddl.eval_batch(net, [images], [gts], indices)
+                eddl.forward(net, [images])
                 preds = eddl.getTensor(out_)
 
                 for k in range(batch_size):
                     pred = eddlT.select(preds, k)
-                    gt = eddlT.select(gts, k)
-                    pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
+                    # gt = eddlT.select(gts, k)
+                    # pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
+                    pred_np = np.array(pred, copy=False)
                     # iou = evaluator.BinaryIoU(pred_np, gt)
                     # print(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}', flush=True)
                     # logging.info(f'Inference {batch_size * j + k + 1}/{num_batches * batch_size} IoU: {iou:.6f}')
                     pred_np[pred_np >= 0.5] = 255
                     pred_np[pred_np < 0.5] = 0
 
-                    orig_image_path = d.samples_[d.GetSplit()[j * batch_size + k]].location_[0]
+                    sample_index = d.GetSplit()[j * batch_size + k]
+                    orig_image_path = d.samples_[sample_index].location_[0]
                     orig_image_name = Path(orig_image_path).name.split('.')
                     orig_image_name = orig_image_name[0] + '.png'
 
@@ -233,13 +243,12 @@ def segment(args):
                         img_ecvl.colortype_ = ecvl.ColorType.BGR
                     img_ecvl.channels_ = "xyc"
                     # Convert to original size
-                    # TODO use size_ member of Sample - wait for new bindings
-                    original_image = ecvl.ImRead(orig_image_path)
-                    ecvl.ResizeDim(img_ecvl, img_ecvl, [original_image.dims_[0], original_image.dims_[1]])
+                    ecvl.ResizeDim(img_ecvl, img_ecvl, d.samples_[sample_index].size_)
 
                     ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
                     outputfile.write(opjoin(output_dir, orig_image_name) + '\n')
             outputfile.close()
+            print('Inference completed', flush=True)
         print('<done>', flush=True)
     logfile.close()
     del net

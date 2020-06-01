@@ -44,17 +44,19 @@ def classificate(args):
     try:
         model = bindings.models_binding[args.model_id]
     except KeyError:
-        raise Exception(f'Model with id:{args.model_id} not found in bindings.py')
+        raise Exception(f'Model with id: {args.model_id} not found in bindings.py')
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-        dataset = bindings.dataset_binding[args.dataset_id]
     except KeyError:
-        raise Exception(f'Dataset with id:{args.dataset_id} not found in bindings.py')
+        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
+    dataset = bindings.dataset_binding.get(args.dataset_id)
 
     if dataset is None and not train:
         # Binding does not exist. it's a single image dataset
         # Use as dataset "stub" the dataset on which model has been trained
         dataset = bindings.dataset_binding.get(weight.dataset_id.id)
+    elif dataset is None and train:
+        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
 
     basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
     train_augs = basic_augs
