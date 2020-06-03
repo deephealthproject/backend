@@ -1,5 +1,5 @@
 from deeplearning import datasets
-from deeplearning.models import lenet, vgg, segnet
+from deeplearning.models import lenet, vgg, segnet, segnetBN
 
 losses_binding = {
     'CrossEntropy': 'cross_entropy',
@@ -26,4 +26,5 @@ models_binding = {
     1: lenet.LeNet,
     2: vgg.VGG16,
     4: segnet.SegNet,
+    5: segnetBN.SegNetBN,
 }
