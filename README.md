@@ -1,8 +1,8 @@
 # DeepHealth Toolkit back-end
 
-The DeepHealth back-end interacts with the front-end, serving various APIs;
+The DeepHealth back-end interacts with the front-end, serving various APIs. It receives a configuration from the front-end then runs a deep learning pipeline based on PyECVL and PyEDDL.
 
-It receives a configuration from the front-end then runs a deep learning pipeline based on PyECVL and PyEDDL.  
+API documentation: [app.swaggerhub.com/apis/pritt/DeepHealthToolkitAPI/1.0.2](https://app.swaggerhub.com/apis/pritt/DeepHealthToolkitAPI/1.0.2)
 
 ## Installation
 
@@ -10,8 +10,6 @@ It receives a configuration from the front-end then runs a deep learning pipelin
 - Python3.6+
 - curl -- `sudo apt install curl`
 - **PyECVL 0.2.0** and **PyEDDL 0.6.0**
-
-
 
 Clone and install back-end with:
 
