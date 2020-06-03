@@ -19,6 +19,7 @@ dataset_binding = {
     1: datasets.MNIST,
     5: datasets.ISICSEG,
     55: datasets.ISICCLAS,
+    152: datasets.Pneumothorax,
 }
 
 models_binding = {

@@ -16,6 +16,7 @@ from backend_app import mixins as BAMixins, models, serializers
 from backend_app import utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
+from celery.result import AsyncResult
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -69,12 +70,15 @@ class DatasetViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         task_id = self.request.query_params.get('task_id')
         if task_id:
-            self.queryset = models.Dataset.objects.filter(task_id=task_id)
+            self.queryset = models.Dataset.objects.filter(task_id=task_id, is_single_image=False)
+            # self.queryset = models.Dataset.objects.filter(task_id=task_id)
         return self.queryset
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response({'error': 'Validation error. Request data is malformed.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # Download the yml file in url
         url = serializer.validated_data['path']
@@ -119,7 +123,7 @@ class InferenceSingleViewSet(views.APIView):
     """
     ## POST
     This API allows the inference of a single image.
-    It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replace by
+    It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replaced by
     the url of the image to process.
     """
 
@@ -250,15 +254,18 @@ class OutputViewSet(views.APIView):
         infer = models.Inference.objects.filter(celery_id=process_id)
         if not infer:
             # already deleted weight/training or inference
-            return Response({"result": "Process stopped before finishing or non existing"},
+            return Response({"result": "Process stopped before finishing or non existing."},
                             status=status.HTTP_404_NOT_FOUND)
 
+        if AsyncResult(process_id).status == 'PENDING':
+            return Response({"result": "Process in execution. Try later for output results."},
+                            status=status.HTTP_200_OK)
+
         infer = infer.first()
-        # Differentiate classification and segmentation
-        # if infer.modelweights_id.task_id.name.lower() == 'classification':
         if not os.path.exists(opjoin(settings.OUTPUTS_DIR, infer.outputfile)):
             return Response({"result": "Output file not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         outputs = open(opjoin(settings.OUTPUTS_DIR, infer.outputfile), 'r')
+        # Differentiate classification and segmentation
         if infer.modelweights_id.model_id.task_id.name.lower() == 'classification':
             lines = outputs.read().splitlines()
             lines = [line.split(';') for line in lines]

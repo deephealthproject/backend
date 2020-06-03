@@ -12,7 +12,7 @@ class MNIST:
     def __init__(self, path, batch_size, augs,
                  ctype=ecvl.ColorType.GRAY):
         self.d = ecvl.DLDataset(path, batch_size, augs, ctype)
-        self.num_classes = len(self.d.classes_ or [1])
+        self.num_classes = len(self.d.classes_ or [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) # TODO Fix MNIST d.classes_ empty
 
 
 class ISICCLAS:
@@ -25,6 +25,14 @@ class ISICCLAS:
 class ISICSEG:
     def __init__(self, path, batch_size, augs,
                  ctype=ecvl.ColorType.BGR,
+                 ctype_gt=ecvl.ColorType.GRAY):
+        self.d = ecvl.DLDataset(path, batch_size, augs, ctype, ctype_gt)
+        self.num_classes = len(self.d.classes_ or [1])
+
+
+class Pneumothorax:
+    def __init__(self, path, batch_size, augs,
+                 ctype=ecvl.ColorType.GRAY,
                  ctype_gt=ecvl.ColorType.GRAY):
         self.d = ecvl.DLDataset(path, batch_size, augs, ctype, ctype_gt)
         self.num_classes = len(self.d.classes_ or [1])

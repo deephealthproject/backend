@@ -77,6 +77,7 @@ def classificate(args):
 
     logging.info('Reading dataset')
     print('Reading dataset', flush=True)
+
     dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
     d = dataset.d
     num_classes = dataset.num_classes
@@ -181,7 +182,7 @@ def classificate(args):
             preds = np.empty((0, num_classes), np.float64)
 
             for b in range(num_batches_test):
-                d.LoadBatch(images, labels)
+                d.LoadBatch(images)
                 images.div_(255.0)
                 eddl.forward(net, [images])
 

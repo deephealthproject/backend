@@ -28,5 +28,15 @@
     "is_single_image": false,
     "task_id": 1
   }
+},
+{
+  "model": "backend_app.dataset",
+  "pk": 152,
+  "fields": {
+    "name": "Pneumothorax",
+    "path": "/mnt/data/DATA/siim-train-test/siim/pneumothorax.yml",
+    "is_single_image": false,
+    "task_id":2
+  }
 }
 ]

@@ -14,7 +14,7 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Dataset
         fields = ['id', 'name', 'path', 'task_id']
-        write_only_fields = ['path', 'task_id']  # Only for post
+        write_only_fields = ['name', 'path', 'task_id']  # Only for post
 
 
 class DropDownSerializer(serializers.Serializer):
@@ -50,8 +50,8 @@ class ModelSerializer(serializers.ModelSerializer):
 class ModelWeightsSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'celery_id']
-        read_only_fields = ['location', 'celery_id', 'logfile', "model_id", "dataset_id", "pretrained_on"]
+        fields = ['id', 'name', 'celery_id',  "model_id", "dataset_id", "pretrained_on"]
+        read_only_fields = ['location', 'celery_id', 'logfile']
         write_only_fields = ['id']
 
 
