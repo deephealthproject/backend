@@ -27,12 +27,9 @@ python -c 'from django.core.management.utils import get_random_secret_key;print(
 
 Edit the `~/config` file to configure the application (SECRET_KEY, DB and RabbitMQ connection and other optional Django settings).
 
-
 ##### Celery
 Install with: `sudo apt install rabbitmq-server` 
 and run the celery deamon with: `python manage.py celery`.
-
-
 
 ## First run
 
@@ -57,3 +54,12 @@ python manage.py runserver <my-server>:<my-server-port>
 # Start celery
 python manage.py celery
 ```
+
+## API Practice
+
+The following table contains Postman collections for practicing with the backend.
+
+| Collection | Postman Link |
+|:---:|:---:|
+| 2nd Hackathon - Pneumothorax | [![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/71cdc7dda0505b4be84c) |
+
