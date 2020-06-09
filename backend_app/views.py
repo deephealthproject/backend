@@ -12,7 +12,6 @@ from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import mixins, status, views, viewsets
-from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from backend import celery_app, settings
@@ -23,6 +22,7 @@ from deeplearning.utils import nn_settings
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
+                         mixins.CreateModelMixin,
                          viewsets.GenericViewSet):
     queryset = models.AllowedProperty.objects.all()
     serializer_class = serializers.AllowedPropertySerializer
@@ -49,6 +49,13 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
         using the `/properties/{id}` API.
         """
         return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """Create a new AllowedProperty
+
+         This method create a new AllowedProperty
+        """
+        return super().create(request, *args, **kwargs)
 
 
 class DatasetViewSet(mixins.ListModelMixin,

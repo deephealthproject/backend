@@ -98,4 +98,4 @@ def do_inference(serializer):
         "result": "ok",
         "process_id": celery_id.id,
     })
-    return Response(response, status=status.HTTP_201_CREATED)
+    return Response(response.data, status=status.HTTP_201_CREATED)

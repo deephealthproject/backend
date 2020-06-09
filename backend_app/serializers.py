@@ -6,8 +6,8 @@ from backend_app import models
 class AllowedPropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.AllowedProperty
-        # fields = '__all__'
-        exclude = ['id']
+        fields = '__all__'
+        # exclude = ['id']
 
 
 class DatasetSerializer(serializers.ModelSerializer):
