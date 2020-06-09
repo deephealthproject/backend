@@ -1,43 +1,31 @@
 import datetime
+import os
+import uuid
+from os.path import join as opjoin
 from pathlib import Path
 
 import numpy as np
-import os
 import requests
 import yaml
-import uuid
+from celery.result import AsyncResult
 from django.db.models import Q
-from os.path import join as opjoin
-from rest_framework import mixins, status, views, viewsets, generics
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import mixins, status, views, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from backend import celery_app, settings
-from backend_app import mixins as BAMixins, models, serializers
+from backend_app import mixins as BAMixins, models, serializers, swagger
 from backend_app import utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
-from celery.result import AsyncResult
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
                          viewsets.GenericViewSet):
-    """
-    ## GET
-    This method returns the values that a property can assume depending on the model employed.
-    It provides a default value and a comma separated list of values to choose from.
-
-    When this api returns an empty list, the property allowed values and default should be retrieved
-    using the `/properties/{id}` API.
-
-    ## Parameters
-    `model_id`: integer
-        Required integer representing the model.
-
-    `property_id`: integer
-        Required integer representing a property.
-    """
     queryset = models.AllowedProperty.objects.all()
-    serializer_class = serializers.AllowedPropSerializer
+    serializer_class = serializers.AllowedPropertySerializer
     params = ['model_id', 'property_id']
 
     def get_queryset(self):
@@ -46,24 +34,27 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
         self.queryset = models.AllowedProperty.objects.filter(model_id=model_id, property_id=property_id)
         return self.queryset
 
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY, "Integer representing a model",
+                                             required=True, type=openapi.TYPE_INTEGER),
+                           openapi.Parameter('property_id', openapi.IN_QUERY, "Integer representing a property",
+                                             required=True, type=openapi.TYPE_INTEGER)]
+    )
+    def list(self, request, *args, **kwargs):
+        """Return the allowed and default values of a property
+
+        This method returns the values that a property can assume depending on the model employed. \
+        It provides a default value and a comma separated list of values to choose from.
+        When this api returns an empty list, the property allowed values and default should be retrieved \
+        using the `/properties/{id}` API.
+        """
+        return super().list(request, *args, **kwargs)
+
 
 class DatasetViewSet(mixins.ListModelMixin,
+                     mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
-    """
-    ## GET
-    This method returns the datasets list that should be loaded in the power user component,
-    on the left side of the page, in the same panel as the models list.
-
-    ### Parameters
-    `task_id` _(optional)_: integer
-        Integer representing a task used to retrieve dataset of a specific task.
-
-    ## POST
-    This API uploads a dataset YAML file and stores it in the backend.
-    The url must contain the url of a dataset, e.g.
-    [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1).
-    """
     queryset = models.Dataset.objects.filter(is_single_image=False)
     serializer_class = serializers.DatasetSerializer
 
@@ -74,7 +65,31 @@ class DatasetViewSet(mixins.ListModelMixin,
             # self.queryset = models.Dataset.objects.filter(task_id=task_id)
         return self.queryset
 
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('task_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, required=False)]
+    )
+    def list(self, request, *args, **kwargs):
+        """Get the list datasets to use for training or finetuning
+
+        This method returns all the datasets in the backend.
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single dataset
+
+        This method returns the `{id}` dataset.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(responses=swagger.DatasetViewSet_create_response)
     def create(self, request, *args, **kwargs):
+        """Upload a new dataset downloading it from a URL
+
+        This API uploads a dataset YAML file and stores it in the backend.
+        The `path` field must contain the URL of a dataset, e.g. \
+        [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1).
+        """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response({'error': 'Validation error. Request data is malformed.'},
@@ -105,13 +120,14 @@ class DatasetViewSet(mixins.ListModelMixin,
 
 
 class InferenceViewSet(views.APIView):
-    """
-    ## POST
-    This is the main entry point to start the inference.
-    It is mandatory to specify a pre-trained model and a dataset for finetuning.
-    """
-
+    @swagger_auto_schema(request_body=serializers.InferenceSerializer,
+                         responses=swagger.inferences_post_responses)
     def post(self, request):
+        """Start an inference process using a pre-trained model on a dataset
+
+        This is the main entry point to start the inference. \
+        It is mandatory to specify a pre-trained model and a dataset.
+        """
         serializer = serializers.InferenceSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -120,14 +136,15 @@ class InferenceViewSet(views.APIView):
 
 
 class InferenceSingleViewSet(views.APIView):
-    """
-    ## POST
-    This API allows the inference of a single image.
-    It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replaced by
-    the url of the image to process.
-    """
-
+    @swagger_auto_schema(request_body=serializers.InferenceSingleSerializer,
+                         responses=swagger.inferences_post_responses)
     def post(self, request):
+        """Starts the inference providing an image URL
+
+        This API allows the inference of a single image.
+        It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replaced by \
+        the url of the image to process.
+        """
         serializer = serializers.InferenceSingleSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -165,17 +182,6 @@ class InferenceSingleViewSet(views.APIView):
 
 class ModelViewSet(mixins.ListModelMixin,
                    viewsets.GenericViewSet):
-    """
-    ## GET
-    This API allows the client to know which Neural Network models are available in the system in order to allow
-    their selection.
-
-    The optional `task_id` parameter is used to filter them based on the task the models are used for.
-
-    ## Parameters
-    `task_id` _(optional)_: integer
-        Optional integer for filtering the models based on task.
-    """
     queryset = models.Model.objects.all()
     serializer_class = serializers.ModelSerializer
 
@@ -185,22 +191,26 @@ class ModelViewSet(mixins.ListModelMixin,
             self.queryset = models.Model.objects.filter(task_id=task_id)
         return self.queryset
 
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('task_id', openapi.IN_QUERY,
+                                             "Integer for filtering the models based on task.",
+                                             type=openapi.TYPE_INTEGER, required=False)]
+    )
+    def list(self, request):
+        """Returns the available Neural Network models
+
+        This API allows the client to know which Neural Network models are available in the system in order to allow \
+        their selection.
+
+        The optional `task_id` parameter is used to filter them based on the task the models are used for.
+        """
+        return super().list(request)
+
 
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           mixins.RetrieveModelMixin,
+                          mixins.UpdateModelMixin,
                           viewsets.GenericViewSet):
-    """
-    ## GET
-    When 'use pre-trained' is selected, it is possible to query the backend passing a `model_id` to obtain a list
-    of dataset on which it was pretrained.
-
-    ## Parameters
-    `model_id`: integer
-        Required integer representing the model.
-
-    ## PUT
-    This method updates an existing model weight (e.g. change the name).
-    """
     queryset = models.ModelWeights.objects.all()
     serializer_class = serializers.ModelWeightsSerializer
     params = ['model_id']
@@ -210,8 +220,28 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             model_id = self.request.query_params.get('model_id')
             self.queryset = models.ModelWeights.objects.filter(model_id=model_id)
             return self.queryset
-        elif self.action == 'retrieve':
+        else:
             return super(ModelWeightsViewSet, self).get_queryset()
+
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY,
+                                             "Return the modelweights obtained on `model_id` model.",
+                                             type=openapi.TYPE_INTEGER, required=False)]
+    )
+    def list(self, request):
+        """Returns the available Neural Network models
+
+        When 'use pre-trained' is selected, it is possible to query the backend passing a `model_id` to obtain a list
+        of dataset on which it was pretrained.
+        """
+        return super().list(request)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single modelweight
+
+        This API returns the modelweight with the requested`{id}`.
+        """
+        return super().retrieve(request, *args, **kwargs)
 
     def get_obj(self, id):
         try:
@@ -220,6 +250,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             return None
 
     def put(self, request, *args, **kwargs):
+        """Update an existing weight
+
+        This method updates an existing model weight (e.g. change the name).
+        """
         weight = self.get_obj(request.data['id'])
         if not weight:
             error = {"Error": f"Weight {request.data['id']} does not exist"}
@@ -230,23 +264,40 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             # Returns all the elements with model_id in request
             queryset = models.ModelWeights.objects.filter(model_id=weight.model_id)
             serializer = self.get_serializer(queryset, many=True)
+            # serializer = self.serializer_class(queryset, many=True)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def update(self, request, *args, **kwargs):
+        """Update an existing weight
+
+        This method updates an existing model weight (e.g. change the name).
+        """
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(auto_schema=None)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
 
 class OutputViewSet(views.APIView):
-    """
-    ## GET
-    This API provides information about an `inference` process.In classification task it returns the list
-    of images and an array composed of the classes prediction scores.
-    In segmentation task it returns the URLs of the segmented images.
-    """
-
     @staticmethod
     def trunc(values, decs=0):
         return np.trunc(values * 10 ** decs) / (10 ** decs)
 
-    def get(self, request):
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
+                                             "Pass a required UUID representing a finished process.",
+                                             type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, required=False)],
+        responses=swagger.OutputViewSet_get_responses
+    )
+    def get(self, request, *args, **kwargs):
+        """Retrieve results about an inference process
+
+        This API provides information about an `inference` process.In classification task it returns the list \
+        of images and an array composed of the classes prediction scores.
+        In segmentation task it returns the URLs of the segmented images.
+        """
         if not self.request.query_params.get('process_id'):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
@@ -283,17 +334,8 @@ class OutputViewSet(views.APIView):
 class ProjectViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
+                     mixins.UpdateModelMixin,
                      viewsets.GenericViewSet):
-    """
-    ## GET
-    Lists all the available projects or a single one using `projects/{id}` link.
-
-    ## POST
-    Lets to create a new project.
-
-    ## PUT
-    Updates a project.
-    """
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
 
@@ -302,6 +344,28 @@ class ProjectViewSet(mixins.ListModelMixin,
             return models.Project.objects.get(id=id)
         except models.Project.DoesNotExist:
             return None
+
+    def list(self, request, *args, **kwargs):
+        """Loads all the projects
+
+        This method lists all the available projects.
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single project
+
+        Returns a project by `{id}`.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_response)
+    def create(self, request, *args, **kwargs):
+        """Create a new project
+
+        Create a new project.
+        """
+        return super().create(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
         project = self.get_obj(request.data['id'])
@@ -315,17 +379,21 @@ class ProjectViewSet(mixins.ListModelMixin,
             return self.list(request)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def update(self, request, *args, **kwargs):
+        """Update an existing project
+
+        Update a project instance by providing its `{id}`.
+        """
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(auto_schema=None)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
 
 class PropertyViewSet(mixins.ListModelMixin,
                       mixins.RetrieveModelMixin,
                       viewsets.GenericViewSet):
-    """
-    ## GET
-    This API allows the client to know which properties are "globally" supported by the backend.
-
-
-    A model can have different default and allowed values if the `/allowedProperties` return an entry.
-    """
     queryset = models.Property.objects.all()
     serializer_class = serializers.PropertyListSerializer
 
@@ -337,15 +405,35 @@ class PropertyViewSet(mixins.ListModelMixin,
             self.queryset = models.Property.objects.filter(Q(name__icontains=name[0]) | Q(name__icontains=name[1]))
         return self.queryset
 
+    def list(self, request, *args, **kwargs):
+        """Return the Properties supported by backend
+
+        This API allows the client to know which properties are "globally" supported by the backend.
+        A model can have different default value and allowed values if the `/allowedProperties` return an entry.
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single property
+
+        Return a property by `{id}`.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
 
 class StatusView(views.APIView):
-    """
-    ## GET
-    This  API allows the frontend to query the status of a training or inference, identified by a `process_id`
-    (which is returned by `/train` or `/inference` APIs).
-    """
-
+    @swagger_auto_schema(manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
+                                                              "UUID representing a process",
+                                                              required=True, type=openapi.TYPE_STRING,
+                                                              format=openapi.FORMAT_UUID)],
+                         responses=swagger.StatusView_get_response
+                         )
     def get(self, request):
+        """Return the status of an training or inference process
+
+        This  API allows the frontend to query the status of a training or inference, identified by a `process_id` \
+        (which is returned by `/train` or `/inference` APIs).
+        """
         if not self.request.query_params.get('process_id'):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
@@ -392,12 +480,14 @@ class StatusView(views.APIView):
 
 
 class StopProcessViewSet(views.APIView):
-    """
-    ## POST
-    Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs).
-    """
-
+    @swagger_auto_schema(request_body=serializers.StopProcessSerializer,
+                         responses=swagger.StopProcessViewSet_post_response
+                         )
     def post(self, request):
+        """Kill a training or inference process
+
+        Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs).
+        """
         serializer = serializers.StopProcessSerializer(data=request.data)
         if serializer.is_valid():
             process_id = serializer.data['process_id']
@@ -430,23 +520,28 @@ class StopProcessViewSet(views.APIView):
 
 class TaskViewSet(mixins.ListModelMixin,
                   viewsets.GenericViewSet):
-    """
-    ## GET
-    This API allows the client to know which task this platform supports. e.g. classification or segmentation tasks.
-    """
     queryset = models.Task.objects.all()
     serializer_class = serializers.TaskSerializer
 
+    def list(self, request, *args, **kwargs):
+        """Return the tasks supported by backend
+
+        This API allows the client to know which task this platform supports. e.g. classification or segmentation tasks.
+        """
+        return super().list(request, *args, **kwargs)
+
 
 class TrainViewSet(views.APIView):
-    """
-    ## POST
-    This is the main entry point to start the training of a model on a dataset.
-    It is mandatory to specify a model to be trained and a pretraining dataset.
-    When providing a weights_id, the training starts from the pre-trained model.
-    """
-
+    @swagger_auto_schema(request_body=serializers.TrainSerializer,
+                         responses=swagger.TrainViewSet_post_response
+                         )
     def post(self, request):
+        """Starts the training of a (possibly pre-trained) model on a dataset
+
+        This is the main entry point to start the training of a model on a dataset. \
+        It is mandatory to specify a model to be trained and a dataset.
+        When providing a `weights_id`, the training starts from the pre-trained model.
+        """
         serializer = serializers.TrainSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -559,18 +654,6 @@ class TrainViewSet(views.APIView):
 
 class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
                              viewsets.GenericViewSet):
-    """
-    ## GET
-    This API returns the value used for a property in a specific training
-    (a modelweights). It requires a modelweights_id, indicating a training process, and a property_id.
-
-    ## Parameters
-    `modelweights_id`: integer
-        Required integer representing the ModelWeights.
-
-    `property_id`: integer
-        Required integer representing a property.
-    """
     queryset = models.TrainingSetting.objects.all()
     serializer_class = serializers.TrainingSettingSerializer
     params = ['modelweights_id', 'property_id']
@@ -580,3 +663,17 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
         property_id = self.request.query_params.get('property_id')
         self.queryset = models.TrainingSetting.objects.filter(modelweights_id=modelweights_id, property_id=property_id)
         return self.queryset
+
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('modelweights_id', openapi.IN_QUERY, "Integer representing a ModelWeights",
+                                             required=True, type=openapi.TYPE_INTEGER),
+                           openapi.Parameter('property_id', openapi.IN_QUERY, "Integer representing a Property",
+                                             required=True, type=openapi.TYPE_INTEGER)]
+    )
+    def list(self, request, *args, **kwargs):
+        """Returns settings used for a training
+
+        This API returns the value used for a property in a specific training (a modelweights).
+        It requires a `modelweights_id`, indicating a training process, and a `property_id`.
+        """
+        return super().list(request, *args, **kwargs)

@@ -9,7 +9,7 @@ API documentation: [app.swaggerhub.com/apis/pritt/DeepHealthToolkitAPI/1.0.2](ht
 ### Requirements
 - Python3.6+
 - curl -- `sudo apt install curl`
-- **PyECVL 0.2.0** and **PyEDDL 0.6.0**
+- **PyECVL 0.2.0+** and **PyEDDL 0.6.0+**
 
 Clone and install back-end with:
 

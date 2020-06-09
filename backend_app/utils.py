@@ -7,8 +7,8 @@ import yaml
 from rest_framework import status
 from rest_framework.response import Response
 
-from backend_app import models
 from backend import settings
+from backend_app import models, serializers
 from deeplearning.tasks import classification
 from deeplearning.tasks import segmentation
 from deeplearning.utils import inference_settings
@@ -94,8 +94,8 @@ def do_inference(serializer):
 
     i.celery_id = celery_id.id
     i.save()
-    response = {
+    response = serializers.InferenceResponseSerializer(data={
         "result": "ok",
         "process_id": celery_id.id,
-    }
+    })
     return Response(response, status=status.HTTP_201_CREATED)

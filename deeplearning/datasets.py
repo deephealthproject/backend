@@ -12,7 +12,7 @@ class MNIST:
     def __init__(self, path, batch_size, augs,
                  ctype=ecvl.ColorType.GRAY):
         self.d = ecvl.DLDataset(path, batch_size, augs, ctype)
-        self.num_classes = len(self.d.classes_ or [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) # TODO Fix MNIST d.classes_ empty
+        self.num_classes = len(self.d.classes_ or [1])
 
 
 class ISICCLAS:
