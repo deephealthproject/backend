@@ -1,13 +1,23 @@
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.contrib.auth.validators import UnicodeUsernameValidator
 
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
     class Meta:
         model = User
-        fields = ['username']
+        fields = ['id', 'username', 'password']
         read_only = ['id', 'email', 'first_name', 'last_name']
+
+    def create(self, validated_data):
+        user = User.objects.create(
+            username=validated_data['username']
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
 
 
 class UserSerializerNotUnique(serializers.ModelSerializer):

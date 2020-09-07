@@ -74,7 +74,7 @@ class DatasetViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         user = self.request.user
         task_id = self.request.query_params.get('task_id')
-        q_perm = models.Dataset.objects.filter(datasetpermission__user=user)  # Get datasets of current user
+        q_perm = models.Dataset.objects.filter(datasetpermission__user=user.id)  # Get datasets of current user
         if task_id:
             self.queryset = self.queryset.filter(task_id=task_id)
             q_perm = q_perm.filter(task_id=task_id)

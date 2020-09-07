@@ -90,6 +90,18 @@ Navigate through browser to [http://mysite/backend/auth/login/](http://mysite/ba
 1. An user request to authenticate against the backend authentication provider
 -->
 
+### Create users
+
+The `/auth/create/` API lets to create new users providing _username_ and _password_.
+Example:
+```shell script
+# Request
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=<username>&password=<password>" --header "Authorization: Bearer <access_token>" "http://mysite/backend/auth/create/"
+
+# Response
+> {"id": 1, "username": "test",}
+```
+
 
 ## Testing
 
@@ -98,8 +110,8 @@ Backend provides the `/auth/testUser/` API for testing authentication, which ret
 Example:
 ```shell script
 # Request
-curl "http://mysite/backend/testUser/" --header "Authorization: Bearer <access_token>"
+curl "http://mysite/backend/auth/testUser/" --header "Authorization: Bearer <access_token>"
 
 # Response
-> {"username":"dhtest"}
+> {"username": "dhtest"}
 ```
