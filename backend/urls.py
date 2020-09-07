@@ -1,14 +1,14 @@
-from django.contrib import admin
-from django.urls import path, include
-from backend import settings
 from django.conf.urls.static import static
-from rest_framework.urlpatterns import format_suffix_patterns
+from django.contrib import admin
+from django.urls import include, path
+
+from backend import settings
 
 urlpatterns = [
-    path('', include('backend_app.urls')),
+    path(f'{settings.BASE_URL}/', include('backend_app.urls')),
     path('admin/', admin.site.urls),
     # For authentication
-    # path('backend/', include('oauth2.urls')),
+    path(f'{settings.BASE_URL}/auth/', include('auth.urls')),
 ]
 
 if settings.DEBUG:

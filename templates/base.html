@@ -1,0 +1,28 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>DeepHealth Backend Auth</title>
+</head>
+<body>
+<header>
+    {# from https://github.com/sibtc/simple-social-auth #}
+    <h1>DeepHealth Backend Auth</h1>
+    {% if user.is_authenticated %}
+        You are signed in as <strong>{{ user.username }}</strong> /
+        <a href="{% url 'logout' %}">logout</a>
+    {% else %}
+        <a href="{% url 'login' %}">login</a> /
+    {% endif %}
+    <hr>
+</header>
+<main>
+    {% for message in messages %}
+        <p style="color: {% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% endif %}">
+            {{ message }}
+        </p>
+    {% endfor %}
+    {% block content %}
+    {% endblock %}
+</main>
+</body>
+</html>

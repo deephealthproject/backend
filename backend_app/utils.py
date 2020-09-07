@@ -94,7 +94,7 @@ def do_inference(serializer):
 
     i.celery_id = celery_id.id
     i.save()
-    response = serializers.InferenceResponseSerializer(data={
+    response = serializers.InferenceResponseSerializer({
         "result": "ok",
         "process_id": celery_id.id,
     })

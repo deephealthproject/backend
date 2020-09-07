@@ -48,7 +48,7 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # Load db default entries
-python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json
+python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json auth.json
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>
@@ -56,6 +56,8 @@ python manage.py runserver <my-server>:<my-server-port>
 # Start celery
 python manage.py celery
 ```
+
+Read the [auth/README.md](auth/README.md) file for configuring the authentication backend.
 
 ## API Practice
 

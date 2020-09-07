@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
+from auth import serializers as auth_serializers
 from backend_app import models
+
+from django.contrib.auth.models import User
+
+from rest_framework.utils import html, model_meta
 
 
 class AllowedPropertySerializer(serializers.ModelSerializer):
@@ -11,10 +16,24 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
 
 
 class DatasetSerializer(serializers.ModelSerializer):
+    owners = auth_serializers.UserSerializerNotUnique(many=True)
+
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name', 'path', 'task_id']
+        fields = ['id', 'name', 'path', 'task_id', 'owners', 'public']
         write_only_fields = ['name', 'path', 'task_id']  # Only for post
+
+    def create(self, validated_data):
+        owners_data = validated_data.pop('owners')
+        dataset = models.Dataset.objects.create(**validated_data)
+        perm = models.PERM[0][0]
+        for owner_data in owners_data:
+            user = User.objects.get(username__exact=owner_data.get('username'))
+            _ = models.DatasetPermission.objects.get_or_create(user=user, dataset=dataset, permission=perm)
+        return dataset
+
+    # def update(self, instance, validated_data):
+    #     pass
 
 
 class InferenceSerializer(serializers.ModelSerializer):
@@ -43,19 +62,43 @@ class ModelSerializer(serializers.ModelSerializer):
 
 
 class ModelWeightsSerializer(serializers.ModelSerializer):
+    owners = auth_serializers.UserSerializerNotUnique(many=True)
+
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'celery_id', "model_id", "dataset_id", "pretrained_on"]
-        read_only_fields = ['location', 'celery_id', 'logfile']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'owners']
+        read_only_fields = ['location']
         write_only_fields = ['id']
+
+    def update(self, weight, validated_data):
+        info = model_meta.get_field_info(weight)
+        for attr, value in validated_data.items():
+            if attr not in info.relations or not info.relations[attr].to_many:
+                setattr(weight, attr, value)
+        weight.save()
+
+        owners_data = validated_data.pop('owners')
+        # weight = models.ModelWeights.objects.create(**validated_data)
+        perm = models.PERM[0][0]
+        users = []
+        # Give permissions to new users
+        for owner_data in owners_data:
+            user = User.objects.get(username__exact=owner_data.get('username'))
+            users.append(user)
+            _ = models.ModelWeightsPermission.objects.get_or_create(user=user, modelweight=weight, permission=perm)
+        # Remove permissions to excluded users
+        for owner in weight.owners.all():
+            if owner not in users:
+                weight.owners.remove(owner)
+        return weight
 
 
 class ProjectSerializer(serializers.ModelSerializer):
+    users = auth_serializers.UserSerializer(many=True, read_only=True)
+
     class Meta:
         model = models.Project
-        fields = '__all__'
-        # fields = ['id', 'name', 'task_id', 'modelweights_id', 'inference_id']
-        # exclude = ['task', 'modelweights']
+        fields = ['id', 'name', 'task_id', 'users']
 
 
 class PropertyListSerializer(serializers.ModelSerializer):
@@ -73,10 +116,20 @@ class PropertyTrainSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'value']
 
 
+class StopProcessSerializer(serializers.Serializer):
+    process_id = serializers.UUIDField()
+
+
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Task
         fields = '__all__'
+
+
+class TrainingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Training
+        fields = ['id', 'celery_id', 'logfile', 'project_id', 'modelweights_id']
 
 
 class TrainSerializer(serializers.Serializer):
@@ -94,11 +147,10 @@ class TrainingSettingSerializer(serializers.ModelSerializer):
         # exclude = ['id']
 
 
-class StopProcessSerializer(serializers.Serializer):
-    process_id = serializers.UUIDField()
+##########################
+#### RESPONSES SERIALIZERS
+##########################
 
-
-# RESPONSES SERIALIZERS
 
 class GeneralResponse(serializers.Serializer):
     result = serializers.CharField()

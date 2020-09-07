@@ -1,11 +1,16 @@
-import uuid
-from django.db import models
-from backend import settings
 from os.path import join as opjoin
 
+from django.contrib.auth.models import User
+from django.db import models
 
 # def default_logfile_path(basedir, *args):
 #     return opjoin(basedir, *args, f'{uuid.uuid4().hex}.log')
+PERM = [
+    ('VIEW', 'can view'),
+    ('ADD', 'can add'),
+    ('CHANGE', 'can change'),
+    ('DELETE', 'can delete'),
+]
 
 
 def generate_file_path(filename, *args):
@@ -39,6 +44,9 @@ class Dataset(models.Model):
 
     is_single_image = models.BooleanField(default=False)
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
+    public = models.BooleanField(default=False)
+
+    owners = models.ManyToManyField(User, through='DatasetPermission')
 
     class Meta:
         indexes = [models.Index(fields=['is_single_image'])]
@@ -46,6 +54,12 @@ class Dataset(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class DatasetPermission(models.Model):
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    permission = models.CharField(choices=PERM, max_length=6)  # Currently unused
 
 
 class Inference(models.Model):
@@ -86,29 +100,34 @@ class ModelWeights(models.Model):
     name = models.CharField(max_length=200)
 
     model_id = models.ForeignKey(Model, on_delete=models.PROTECT)
-    # task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
     dataset_id = models.ForeignKey(Dataset, on_delete=models.PROTECT)
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    public = models.BooleanField(default=False)
 
-    # Celery generates a random uuid4
-    celery_id = models.CharField(max_length=50, null=True, blank=True)
-    logfile = models.CharField(max_length=2048, null=True, blank=True)
+    owners = models.ManyToManyField(User, through='ModelWeightsPermission')
 
     class Meta:
-        indexes = [models.Index(fields=['celery_id'])]
         # ordering = ['id']
-        verbose_name_plural = "Model weights"
+        verbose_name_plural = "Model Weights"
 
     def __str__(self):
         return self.name
+
+
+class ModelWeightsPermission(models.Model):
+    modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    permission = models.CharField(choices=PERM, max_length=6)  # Currently unused
 
 
 class Project(models.Model):
     name = models.CharField(max_length=32)
 
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
-    modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.SET_NULL, null=True, blank=True)
-    inference_id = models.ForeignKey(Inference, on_delete=models.SET_NULL, null=True, blank=True)
+    # modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.SET_NULL, null=True, blank=True)
+    # inference_id = models.ForeignKey(Inference, on_delete=models.SET_NULL, null=True, blank=True)
+
+    users = models.ManyToManyField(User)
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -142,6 +161,23 @@ class Task(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Training(models.Model):
+    # Celery generates a random uuid4
+    celery_id = models.CharField(max_length=50, null=True, blank=True)
+    logfile = models.CharField(max_length=2048, null=True, blank=True)
+
+    modelweights_id = models.ForeignKey('ModelWeights', on_delete=models.CASCADE)
+    project_id = models.ForeignKey('Project', on_delete=models.CASCADE)
+
+    class Meta:
+        indexes = [models.Index(fields=['celery_id'])]
+        # ordering = ['id']
+        verbose_name_plural = "Trainings"
+
+    # def __str__(self):
+    #     return self.modelweights_id.name
 
 
 class TrainingSetting(models.Model):

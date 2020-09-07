@@ -8,17 +8,23 @@ import numpy as np
 import requests
 import yaml
 from celery.result import AsyncResult
+from django.contrib.auth.models import User
 from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import mixins, status, views, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+# from rest_framework_guardian import filters
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger
 from backend_app import utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -62,14 +68,17 @@ class DatasetViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
-    queryset = models.Dataset.objects.filter(is_single_image=False)
+    queryset = models.Dataset.objects.filter(is_single_image=False, public=True)
     serializer_class = serializers.DatasetSerializer
 
     def get_queryset(self):
+        user = self.request.user
         task_id = self.request.query_params.get('task_id')
+        q_perm = models.Dataset.objects.filter(datasetpermission__user=user)  # Get datasets of current user
         if task_id:
-            self.queryset = models.Dataset.objects.filter(task_id=task_id, is_single_image=False)
-            # self.queryset = models.Dataset.objects.filter(task_id=task_id)
+            self.queryset = self.queryset.filter(task_id=task_id)
+            q_perm = q_perm.filter(task_id=task_id)
+        self.queryset |= q_perm  # Extend the public datasets with ones of the user
         return self.queryset
 
     @swagger_auto_schema(
@@ -91,11 +100,12 @@ class DatasetViewSet(mixins.ListModelMixin,
 
     @swagger_auto_schema(responses=swagger.DatasetViewSet_create_response)
     def create(self, request, *args, **kwargs):
-        """Upload a new dataset downloading it from a URL
+        """Create a new dataset downloading it from URL or path
 
-        This API uploads a dataset YAML file and stores it in the backend.
+        This API creates a dataset YAML file and stores it in the backend.
         The `path` field must contain the URL of a dataset, e.g. \
-        [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1).
+        [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1) \
+        or a local path pointing to a YAML file.
         """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
@@ -105,11 +115,11 @@ class DatasetViewSet(mixins.ListModelMixin,
         # Download the yml file in url
         url = serializer.validated_data['path']
         dataset_name = serializer.validated_data['name']
-        dataset_out_path = f'{settings.DATASETS_DIR}/{dataset_name}.yml'
         if Path(f'{settings.DATASETS_DIR}/{dataset_name}.yml').exists():
             return Response({'error': f'The dataset `{dataset_name}` already exists'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST)  # TODO delete the file when delete the object
         try:
+            dataset_out_path = f'{settings.DATASETS_DIR}/{dataset_name}.yml'
             r = requests.get(url, allow_redirects=True)
             if r.status_code == 200:
                 yaml_content = yaml.load(r.content, Loader=yaml.FullLoader)
@@ -118,6 +128,13 @@ class DatasetViewSet(mixins.ListModelMixin,
 
                 # Update the path
                 serializer.save(path=dataset_out_path)
+
+                headers = self.get_success_headers(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema):
+            # Local YAML file
+            if os.path.isfile(url):
+                serializer.save()
                 headers = self.get_success_headers(serializer.data)
                 return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except requests.exceptions.RequestException:
@@ -218,14 +235,19 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           mixins.RetrieveModelMixin,
                           mixins.UpdateModelMixin,
                           viewsets.GenericViewSet):
-    queryset = models.ModelWeights.objects.all()
+    queryset = models.ModelWeights.objects.filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
     params = ['model_id']
 
     def get_queryset(self):
         if self.action == 'list':
+            user = self.request.user
+
             model_id = self.request.query_params.get('model_id')
-            self.queryset = models.ModelWeights.objects.filter(model_id=model_id)
+            self.queryset = self.queryset.filter(model_id=model_id)
+            q_perm = models.ModelWeights.objects.filter(
+                modelweightspermission__user=user, model_id=model_id)  # Get weights of current user
+            self.queryset |= q_perm
             return self.queryset
         else:
             return super(ModelWeightsViewSet, self).get_queryset()
@@ -235,13 +257,13 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                                              "Return the modelweights obtained on `model_id` model.",
                                              type=openapi.TYPE_INTEGER, required=False)]
     )
-    def list(self, request):
+    def list(self, request, *args, **kwargs):
         """Returns the available Neural Network models
 
         When 'use pre-trained' is selected, it is possible to query the backend passing a `model_id` to obtain a list
         of dataset on which it was pretrained.
         """
-        return super().list(request)
+        return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         """Retrieve a single modelweight
@@ -346,6 +368,14 @@ class ProjectViewSet(mixins.ListModelMixin,
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
 
+    # Always filter projects of the user
+    def get_queryset(self):
+        if self.request.user.is_anonymous:
+            self.queryset = None
+        else:
+            self.queryset = models.Project.objects.filter(users=self.request.user)
+        return self.queryset
+
     def get_obj(self, id):
         try:
             return models.Project.objects.get(id=id)
@@ -353,9 +383,9 @@ class ProjectViewSet(mixins.ListModelMixin,
             return None
 
     def list(self, request, *args, **kwargs):
-        """Loads all the projects
+        """Loads all users projects
 
-        This method lists all the available projects.
+        This method lists all the available projects for the current user.
         """
         return super().list(request, *args, **kwargs)
 
@@ -366,22 +396,64 @@ class ProjectViewSet(mixins.ListModelMixin,
         """
         return super().retrieve(request, *args, **kwargs)
 
+    # Add users to a project
+    def manage_users(self, project, users):
+        for u in users:
+            user = User.objects.get(username__exact=u.get('username'))
+            project.users.add(user)
+        return project
+
+    # Check if users (list of user) exist
+    def check_users(self, users):
+        if not len(users):
+            return Response({"Error": f"Users list cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
+        for u in users:
+            try:
+                User.objects.get(username__exact=u.get('username'))
+            except ObjectDoesNotExist:
+                return Response({"Error": f"User `{u.get('username')}` does not exist"},
+                                status=status.HTTP_400_BAD_REQUEST)
+        return False
+
     @swagger_auto_schema(responses=swagger.ProjectViewSet_create_response)
     def create(self, request, *args, **kwargs):
         """Create a new project
 
         Create a new project.
         """
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            p = serializer.save()
+            headers = self.get_success_headers(serializer.data)
+            users = request.data.get('users')
+            response = self.check_users(users)
+            if response:
+                return response
+
+            p = self.manage_users(p, users)  # Get users from initial_data, that's bad
+            return Response(self.get_serializer(p).data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, *args, **kwargs):
+        """Update an existing project
+
+        Update an existing project
+        """
         project = self.get_obj(request.data['id'])
+        project_id = project.id
         if not project:
             error = {"Error": f"Project {request.data['id']} does not exist"}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        users = request.data.get('users')
+        response = self.check_users(users)
+        if response:
+            return response
+
         serializer = serializers.ProjectSerializer(project, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            p = serializer.save()
+            p.users.clear()
+            p = self.manage_users(p, users)  # Get users from initial_data, it's bad
             # Returns all the elements
             return self.list(request)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -446,9 +518,9 @@ class StatusView(views.APIView):
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
         process_id = self.request.query_params.get('process_id')
 
-        if models.ModelWeights.objects.filter(celery_id=process_id).exists():
+        if models.ModelWeights.objects.filter(training__celery_id=process_id).exists():
             process_type = 'training'
-            process = models.ModelWeights.objects.filter(celery_id=process_id).first()
+            process = models.ModelWeights.objects.filter(training__celery_id=process_id).first()
         elif models.Inference.objects.filter(celery_id=process_id).exists():
             process_type = 'inference'
             process = models.Inference.objects.filter(celery_id=process_id).first()

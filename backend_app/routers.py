@@ -3,7 +3,7 @@
 from collections import OrderedDict
 
 from django.urls import NoReverseMatch
-from rest_framework import response, reverse, routers, views
+from rest_framework import response, reverse, routers
 
 
 class HybridRouter(routers.DefaultRouter):
@@ -42,7 +42,10 @@ class HybridRouter(routers.DefaultRouter):
             api_root_dict[prefix] = list_name.format(basename=basename)
         api_view_urls = self._api_view_urls
 
-        class APIRootView(views.APIView):
+        class DeephealthBackend(routers.APIRootView):
+            """
+            The structure of the backend can be viewed [here](https://drawsql.app/aimagelab/diagrams/api).
+            """
             _ignore_model_permissions = True
             schema = None  # exclude from schema
             api_root_dict = None
@@ -78,7 +81,7 @@ class HybridRouter(routers.DefaultRouter):
                         ret[api_view_key] = "WITH PARAMS: " + regex.pattern
                 return response.Response(ret)
 
-        return APIRootView.as_view()
+        return DeephealthBackend.as_view()
 
     def register_router(self, another_router):
         self.registry.extend(another_router.registry)

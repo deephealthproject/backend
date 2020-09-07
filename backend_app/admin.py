@@ -7,8 +7,14 @@ class AllowedPropertyAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.AllowedProperty._meta.fields]
 
 
+class DatasetPermission(admin.TabularInline):
+    model = models.DatasetPermission
+    extra = 1
+
+
 class DatasetAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.Dataset._meta.fields]
+    inlines = (DatasetPermission,)
 
 
 class InferenceAdmin(admin.ModelAdmin):
@@ -19,8 +25,14 @@ class ModelAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.Model._meta.fields]
 
 
+class ModelWeightsPermission(admin.TabularInline):
+    model = models.ModelWeightsPermission
+    extra = 1
+
+
 class ModelWeightsAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.ModelWeights._meta.fields]
+    inlines = (ModelWeightsPermission,)
 
 
 class ProjectAdmin(admin.ModelAdmin):
@@ -35,6 +47,10 @@ class TaskAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.Task._meta.fields]
 
 
+class TrainingAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in models.Training._meta.fields]
+
+
 class TrainingSettingAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.TrainingSetting._meta.fields]
 
@@ -47,6 +63,7 @@ admin.site.register(models.ModelWeights, ModelWeightsAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.Property, PropertyAdmin)
 admin.site.register(models.Task, TaskAdmin)
+admin.site.register(models.Training, TrainingAdmin)
 admin.site.register(models.TrainingSetting, TrainingSettingAdmin)
 
 admin.site.site_header = "DeepHealth Back-End Administration"

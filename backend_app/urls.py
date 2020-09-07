@@ -1,10 +1,10 @@
-from django.urls import path, include, re_path
+from django.urls import include, path, re_path
+
 # from rest_framework import routers
-from backend_app import views, swagger
+from backend_app import swagger, views
 from backend_app.routers import HybridRouter
 
 router = HybridRouter()
-# router = routers.DefaultRouter(trailing_slash=False)
 
 router.get_api_root_view().cls.__name__ = "DeepHealth Backend"
 router.get_api_root_view().cls.__doc__ = """
@@ -29,9 +29,9 @@ router.add_api_view('train', path('train', views.TrainViewSet.as_view(), name='t
 router.add_api_view('output', path('output', views.OutputViewSet.as_view(), name='output'))
 
 urlpatterns = [
-    path('backend/', include(router.urls)),
-    re_path(r'^backend/swagger(?P<format>\.json|\.yaml)$', swagger.schema_view.without_ui(cache_timeout=0),
+    path(f'', include(router.urls)),
+    re_path(fr'^swagger(?P<format>\.json|\.yaml)$', swagger.schema_view.without_ui(cache_timeout=0),
             name='schema-json'),
-    re_path(r'^backend/swagger$', swagger.schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    re_path(r'^backend/redoc$', swagger.schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    re_path(fr'^swagger$', swagger.schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    re_path(fr'^redoc$', swagger.schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

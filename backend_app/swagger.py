@@ -53,7 +53,10 @@ DatasetViewSet_create_response = {
                                     "id": 7,
                                     "name": "dataset-test",
                                     "path": "/mnt/data/backend/data/datasets/dataset-test.yml",
-                                    "task_id": 2
+                                    "task_id": 2,
+                                    "owners": [
+                                        {"username": "dhtest"}
+                                    ]
                                 }
                             }),
     '400': openapi.Response('Something is wrong in the request. Details in `error`.',
@@ -109,21 +112,31 @@ ProjectViewSet_create_response = {
                                             "name": "Classification mnist",
                                             "task_id": 1,
                                             "modelweights_id": None,
-                                            "inference_id": 592
+                                            "inference_id": 592,
+                                            "users": [
+                                                {"username": "dhtest"}
+                                            ]
                                         },
                                         {
                                             "id": 2,
                                             "name": "Segmentation isic",
                                             "task_id": 2,
                                             "modelweights_id": None,
-                                            "inference_id": 528
+                                            "inference_id": 528,
+                                            "users": [
+                                                {"username": "dhtest"},
+                                                {"username": "dhtest2"}
+                                            ]
                                         },
                                         {
                                             "id": 3,
                                             "name": "Classification isic",
                                             "task_id": 1,
                                             "modelweights_id": None,
-                                            "inference_id": None
+                                            "inference_id": None,
+                                            "users": [
+                                                {"username": "dhtest"}
+                                            ]
                                         }
                                     ]
                             }
