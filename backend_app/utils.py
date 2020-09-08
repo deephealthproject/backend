@@ -4,6 +4,7 @@ import uuid
 
 import numpy as np
 import yaml
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -38,12 +39,40 @@ def guess_extension(ftype):
     return ext
 
 
-def do_inference(serializer):
+# class Custom64ImageField(Base64ImageField):
+#     class Meta:
+#         swagger_schema_fields = {
+#             'type': 'string',
+#             'title': 'File Content',
+#             'description': 'Content of the file base64 encoded',
+#             'read_only': False  # <-- FIX
+#         }
+
+
+def do_inference(request, serializer):
     dataset = serializer.validated_data['dataset_id']
     uuid4 = uuid.uuid4().hex + '.log'
+    modelweights_id = serializer.validated_data['modelweights_id']
+    dataset_id = serializer.validated_data['dataset_id']
+
+    weight = modelweights_id
+    user = request.user
+
+    # Check if current user can use an existing weight
+    if not models.ModelWeightsPermission.objects.filter(modelweight=weight, user=user).exists() and \
+            not weight.public:
+        error = {"Error": f"The {user.username} user has no permission to access the chosen weight"}
+        return Response(error, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check if current user can use the dataset
+    if not models.DatasetPermission.objects.filter(dataset=weight.dataset_id, user=user).exists() and \
+            not weight.dataset_id.public:
+        error = {"Error": f"The {user.username} user has no permission to access the chosen dataset"}
+        return Response(error, status=status.HTTP_401_UNAUTHORIZED)
+
     i = models.Inference(
-        modelweights_id=serializer.validated_data['modelweights_id'],
-        dataset_id=serializer.validated_data['dataset_id'],
+        modelweights_id=modelweights_id,
+        dataset_id=dataset_id,
         stats='',  # todo change
         # logfile=models.default_logfile_path(settings.INFERENCE_DIR, 'logs'),
         # outputfile=models.default_logfile_path(settings.OUTPUTS_DIR),
@@ -51,7 +80,7 @@ def do_inference(serializer):
         outputfile=models.generate_file_path(uuid4, settings.OUTPUTS_DIR),
     )
     i.save()
-    p_id = serializer.data['project_id']
+    p_id = serializer.validated_data['project_id']
     project = models.Project.objects.get(id=p_id)
     project.inference_id = i
     project.save()
@@ -71,7 +100,7 @@ def do_inference(serializer):
             hyperparams[p.name] = p.default
 
     # Retrieve configuration of the specified modelweights
-    qs = models.TrainingSetting.objects.filter(modelweights_id=i.modelweights_id)
+    qs = models.TrainingSetting.objects.filter(training_id__modelweights_id=i.modelweights_id)
 
     # Create the dict of training settings
     for setting in qs:

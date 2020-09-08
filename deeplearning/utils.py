@@ -43,12 +43,14 @@ def cuda_is_available():
     return True
 
 
-def nn_settings(modelweight, hyperparams, dataset_id=None, mode='training'):
+def nn_settings(training, hyperparams, dataset_id=None, mode='training'):
+    modelweight = training.modelweights_id
     if dataset_id is None:
         dataset_id = modelweight.dataset_id_id
 
     try:
         config = {
+            'training_id': training.id,
             'weight_id': modelweight.id,
             'model_id': modelweight.model_id_id,
             'dataset_id': dataset_id,

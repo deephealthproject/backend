@@ -47,6 +47,7 @@ def segment(args):
     ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
     outputfile = None
     inference = None
+    training = None
     output_dir = None
 
     train = True if args.mode == 'training' else False
@@ -55,6 +56,7 @@ def segment(args):
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     if train:
+        training = dj_models.Training.objects.get(id=args.training_id)
         pretrained = None
         if weight.pretrained_on:
             pretrained = weight.pretrained_on.location
@@ -110,7 +112,7 @@ def segment(args):
     out_ = eddl.Sigmoid(model(in_, num_classes))
     net = eddl.Model([in_], [out_])
     if train:
-        logfile = open(Path(weight.logfile), 'w')
+        logfile = open(Path(training.logfile), 'w')
     else:
         logfile = open(Path(inference.logfile), 'w')
         outputfile = open(inference.outputfile, 'w')

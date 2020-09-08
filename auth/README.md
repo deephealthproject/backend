@@ -47,7 +47,7 @@ curl -H "Authorization: Bearer <your_access_token>" http://mysite/backend/auth/t
 Example:
 ```shell script
 # Request
-curl -H "Authorization: Bearer HqddkWJBvqjrNLwA8iiy9IYQqZENW2" https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/auth/testUser/
+curl -H "Authorization: Bearer HqddkWJBvqjrNLwA8iiy9IYQqZENW2" https://mysite/backend/auth/testUser/
 
 # Response
 [{"username": "dhtest", "email": "", "first_name": "", "last_name": ""}]
@@ -90,7 +90,7 @@ Navigate through browser to [http://mysite/backend/auth/login/](http://mysite/ba
 1. An user request to authenticate against the backend authentication provider
 -->
 
-### Create users
+## Create users
 
 The `/auth/create/` API lets to create new users providing _username_ and _password_.
 Example:
@@ -103,7 +103,7 @@ curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "username=<
 ```
 
 
-## Testing
+## Testing authentication
 
 Backend provides the `/auth/testUser/` API for testing authentication, which returns some information about the _dhtest_ user. __Authorization token must be included in every request__, otherwise "HTTP 401 Unauthorized" will be thrown.
 

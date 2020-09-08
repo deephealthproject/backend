@@ -1,11 +1,9 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.utils import model_meta
 
 from auth import serializers as auth_serializers
 from backend_app import models
-
-from django.contrib.auth.models import User
-
-from rest_framework.utils import html, model_meta
 
 
 class AllowedPropertySerializer(serializers.ModelSerializer):
@@ -47,12 +45,17 @@ class InferenceSerializer(serializers.ModelSerializer):
 
 class InferenceSingleSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField()
-    image_url = serializers.URLField()
+    image_url = serializers.URLField(required=False)
+    image_data = serializers.CharField(required=False)
 
     class Meta:
         model = models.Inference
-        exclude = ['stats', 'dataset_id', 'logfile']
-        # write_only_fields = ['modelweights_id', 'image_url', 'project_id']
+        fields = ['project_id', 'modelweights_id', 'image_url', 'image_data']
+
+    def validate(self, data):
+        if not data.get('image_url') and not data.get('image_data'):
+            raise serializers.ValidationError("At least one of `image_url` and `image_data` is needed.")
+        return data
 
 
 class ModelSerializer(serializers.ModelSerializer):
@@ -78,7 +81,11 @@ class ModelWeightsSerializer(serializers.ModelSerializer):
         weight.save()
 
         owners_data = validated_data.pop('owners')
-        # weight = models.ModelWeights.objects.create(**validated_data)
+
+        # Weights must belong to at least 1 user
+        if not len(owners_data):
+            raise serializers.ValidationError({"Error": f"Owners list cannot be empty"})
+
         perm = models.PERM[0][0]
         users = []
         # Give permissions to new users
@@ -144,7 +151,6 @@ class TrainingSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.TrainingSetting
         fields = '__all__'
-        # exclude = ['id']
 
 
 ##########################

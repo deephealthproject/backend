@@ -1,3 +1,4 @@
+import base64
 import datetime
 import os
 import uuid
@@ -9,22 +10,18 @@ import requests
 import yaml
 from celery.result import AsyncResult
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import mixins, status, views, viewsets
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import permissions
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-# from rest_framework_guardian import filters
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger
 from backend_app import utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
-from django.core.exceptions import ObjectDoesNotExist
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -155,7 +152,7 @@ class InferenceViewSet(views.APIView):
         serializer = serializers.InferenceSerializer(data=request.data)
 
         if serializer.is_valid():
-            return utils.do_inference(serializer)
+            return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -163,25 +160,49 @@ class InferenceSingleViewSet(views.APIView):
     @swagger_auto_schema(request_body=serializers.InferenceSingleSerializer,
                          responses=swagger.inferences_post_responses)
     def post(self, request):
-        """Starts the inference providing an image URL
+        """Starts the inference providing an url or base64 content image
 
         This API allows the inference of a single image.
-        It is mandatory to specify the same fields of `/inference` API, but for dataset_id which is replaced by \
-        the url of the image to process.
+        It is mandatory to specify a `project_id` and a `modelweights_id` to use, then at least one of `image_url` and \
+        `image_data` must be passed.
+
+        The image_url data parameter represents an image url to download and test, while image_data represents the \
+        base64 content of an image to process.
         """
         serializer = serializers.InferenceSingleSerializer(data=request.data)
 
         if serializer.is_valid():
-            image_url = serializer.validated_data['image_url']
             project_id = serializer.validated_data['project_id']
             task_id = models.Project.objects.get(id=project_id).task_id
+            dummy_dataset = None
+            if serializer.validated_data.get('image_data'):
+                image_data = serializer.validated_data['image_data']
+                header, data_encoded = image_data.split(',', 1)
+                header = header.split(':')[1].split(';')[0]
+                ext = utils.guess_extension(header)
+                # Create image from base64
+                image_name = "UserImage" + str(uuid.uuid4()) + ext
+                with open(opjoin(settings.DATASETS_DIR, image_name), "wb") as f:
+                    f.write(base64.b64decode(data_encoded))
 
-            # Create a dataset with the single image to process
-            dummy_dataset = f'name: "{image_url}"\n' \
-                            f'description: "{image_url} auto-generated dataset"\n' \
-                            f'images: ["{image_url}"]\n' \
-                            f'split:\n' \
-                            f'  test: [0]'
+                # Create a dataset with the single image to process
+                dummy_dataset = f'name: "User single image"\n' \
+                                f'description: "User single image auto-generated dataset"\n' \
+                                f'images: ["{image_name}"]\n' \
+                                f'split:\n' \
+                                f'  test: [0]'
+            elif serializer.validated_data.get('image_url'):
+                image_url = serializer.validated_data.get('image_url')
+                # Create a dataset with the single image to process
+                dummy_dataset = f'name: "{image_url}"\n' \
+                                f'description: "{image_url} auto-generated dataset"\n' \
+                                f'images: ["{image_url}"]\n' \
+                                f'split:\n' \
+                                f'  test: [0]'
+            else:
+                error = {'error': 'Missing data. One of `image_url` and `image_data` must be included in body request.'}
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
             # Save dataset and get id
             d = models.Dataset(name=f'single-image-dataset', task_id=task_id, path='', is_single_image=True)
             d.save()
@@ -190,7 +211,7 @@ class InferenceSingleViewSet(views.APIView):
             except yaml.YAMLError as e:
                 d.delete()
                 print(e)
-                return Response({'error': 'Error in YAML parsing'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Error in YAML parsing'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             with open(f'{settings.DATASETS_DIR}/single_image_dataset_{d.id}.yml', 'w') as f:
                 yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
@@ -200,7 +221,7 @@ class InferenceSingleViewSet(views.APIView):
             d.save()
 
             serializer.validated_data['dataset_id'] = d
-            return utils.do_inference(serializer)
+            return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -622,12 +643,27 @@ class TrainViewSet(views.APIView):
         When providing a `weights_id`, the training starts from the pre-trained model.
         """
         serializer = serializers.TrainSerializer(data=request.data)
-
+        user = request.user
         if serializer.is_valid():
             # Create a new modelweights and start training
             weight = models.ModelWeights()
-            weight.dataset_id_id = serializer.data['dataset_id']
-            weight.model_id_id = serializer.data['model_id']
+            weight.dataset_id_id = serializer.validated_data['dataset_id']
+            weight.model_id_id = serializer.validated_data['model_id']
+
+            if serializer.validated_data['weights_id']:
+                weight.pretrained_on_id = serializer.validated_data['weights_id']
+
+                # Does pretraining really exist?
+                if not models.ModelWeights.objects.filter(id=weight.pretrained_on_id).exists() and not weight.public:
+                    error = {"Error": f"Model weight with id `{weight.pretrained_on_id}` does not exist"}
+                    return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if current user can use an existing weight as pretraining
+                if not models.ModelWeightsPermission.objects.filter(modelweight_id=weight.pretrained_on_id,
+                                                                    user=user).exists():
+                    error = {
+                        "Error": f"The {user.username} user has no permission to access the chosen pretraining weight"}
+                    return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
             if not models.Dataset.objects.filter(id=weight.dataset_id_id, is_single_image=False).exists():
                 error = {"Error": f"Dataset with id `{weight.dataset_id_id}` does not exist"}
@@ -637,8 +673,8 @@ class TrainViewSet(views.APIView):
                 error = {"Error": f"Model with id `{weight.model_id_id}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            if not models.Project.objects.filter(id=serializer.data['project_id']).exists():
-                error = {"Error": f"Project with id `{serializer.data['project_id']}` does not exist"}
+            if not models.Project.objects.filter(id=serializer.validated_data['project_id']).exists():
+                error = {"Error": f"Project with id `{serializer.validated_data['project_id']}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if dataset and model are both for same task
@@ -646,24 +682,33 @@ class TrainViewSet(views.APIView):
                 error = {"Error": f"Model and dataset must belong to the same task"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            project = models.Project.objects.get(id=serializer.data['project_id'])
+            # Check if current user can use the dataset
+            if not models.DatasetPermission.objects.filter(dataset_id=weight.dataset_id_id, user=user).exists() and \
+                    not weight.dataset_id.public:
+                error = {"Error": f"The {user.username} user has no permission to access the chosen dataset"}
+                return Response(error, status=status.HTTP_401_UNAUTHORIZED)
+
+            project = models.Project.objects.get(id=serializer.validated_data['project_id'])
             task_name = project.task_id.name.lower()
-            weight.task_id = project.task_id
+            # weight.task_id = project.task_id
+
             weight.name = f'{weight.model_id.name}_{weight.dataset_id.name}_' \
                           f'{datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}'
-            if serializer.data['weights_id']:
-                weight.pretrained_on_id = serializer.data['weights_id']
-
-                if not models.ModelWeights.objects.filter(id=weight.pretrained_on_id).exists():
-                    error = {"Error": f"Model weight with id `{weight.pretrained_on_id}` does not exist"}
-                    return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             weight.save()  # Generate an id for the weight
             ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
             weight.location = Path(opjoin(ckpts_dir, f'{weight.id}.bin')).absolute()
-            # Create a logfile
-            weight.logfile = models.generate_file_path(f'{uuid.uuid4().hex}.log', settings.TRAINING_DIR, 'logs')
             weight.save()
+
+            # Must assign permissions to new weights
+            # Grant permission to current user
+            models.ModelWeightsPermission.objects.create(modelweight=weight, user=user,
+                                                         permission=models.PERM[0][0])
+
+            # Create a logfile
+            training = models.Training(modelweights_id=weight, project_id=project)
+            training.logfile = models.generate_file_path(f'{uuid.uuid4().hex}.log', settings.TRAINING_DIR, 'logs')
+            training.save()
 
             hyperparams = {}
 
@@ -694,12 +739,12 @@ class TrainViewSet(views.APIView):
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
                 property = queryset[0]
                 ts.property_id = property
-                ts.modelweights_id = weight
+                ts.training_id = training
                 ts.value = str(p['value'])
                 ts.save()
                 hyperparams[property.name] = ts.value
 
-            config = nn_settings(modelweight=weight, hyperparams=hyperparams)
+            config = nn_settings(training=training, hyperparams=hyperparams)
             if not config:
                 return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -713,14 +758,9 @@ class TrainViewSet(views.APIView):
             else:
                 return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
 
-            weight = models.ModelWeights.objects.get(id=weight.id)
-            weight.celery_id = celery_id.id
-            weight.save()
-
-            # todo what if project already has a modelweight?
-            # Training started, store the training in project
-            project.modelweights_id = weight
-            project.save()
+            training = models.Training.objects.get(id=training.id)
+            training.celery_id = celery_id.id
+            training.save()
 
             response = {
                 "result": "ok",
@@ -735,24 +775,24 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
                              viewsets.GenericViewSet):
     queryset = models.TrainingSetting.objects.all()
     serializer_class = serializers.TrainingSettingSerializer
-    params = ['modelweights_id', 'property_id']
+    params = ['training_id', 'property_id']
 
     def get_queryset(self):
-        modelweights_id = self.request.query_params.get('modelweights_id')
+        training_id = self.request.query_params.get('training_id')
         property_id = self.request.query_params.get('property_id')
-        self.queryset = models.TrainingSetting.objects.filter(modelweights_id=modelweights_id, property_id=property_id)
+        self.queryset = models.TrainingSetting.objects.filter(training_id=training_id, property_id=property_id)
         return self.queryset
 
     @swagger_auto_schema(
-        manual_parameters=[openapi.Parameter('modelweights_id', openapi.IN_QUERY, "Integer representing a ModelWeights",
+        manual_parameters=[openapi.Parameter('training_id', openapi.IN_QUERY, "Integer representing a Training",
                                              required=True, type=openapi.TYPE_INTEGER),
                            openapi.Parameter('property_id', openapi.IN_QUERY, "Integer representing a Property",
                                              required=True, type=openapi.TYPE_INTEGER)]
     )
     def list(self, request, *args, **kwargs):
-        """Returns settings used for a training
+        """Returns settings used for a training process
 
-        This API returns the value used for a property in a specific training (a modelweights).
-        It requires a `modelweights_id`, indicating a training process, and a `property_id`.
+        This API returns the value used for a property in a specific Training.
+        It requires a `training_id`, indicating a training process, and a `property_id`.
         """
         return super().list(request, *args, **kwargs)

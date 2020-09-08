@@ -181,14 +181,14 @@ class Training(models.Model):
 
 
 class TrainingSetting(models.Model):
-    modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
+    training_id = models.ForeignKey(Training, on_delete=models.CASCADE)
     property_id = models.ForeignKey(Property, on_delete=models.CASCADE)
 
     value = models.CharField(max_length=50)
 
     class Meta:
         ordering = ['id']
-        unique_together = ["modelweights_id", "property_id"]
+        unique_together = ["training_id", "property_id"]
 
     def __str__(self):
         return self.value

@@ -26,12 +26,14 @@ def classificate(args):
     ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
     outputfile = None
     inference = None
+    training = None
 
     train = True if args.mode == 'training' else False
     batch_size = args.batch_size if args.mode == 'training' else args.test_batch_size
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
     if train:
+        training = dj_models.Training.objects.get(id=args.training_id)
         pretrained = None
         if weight.pretrained_on:
             pretrained = weight.pretrained_on.location
@@ -58,6 +60,7 @@ def classificate(args):
     elif dataset is None and train:
         raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
 
+    # Define augmentations for splits
     basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
     train_augs = basic_augs
     val_augs = basic_augs
@@ -86,7 +89,7 @@ def classificate(args):
     net = eddl.Model([in_], [out])
 
     if train:
-        logfile = open(Path(weight.logfile), 'w')
+        logfile = open(Path(training.logfile), 'w')
     else:
         logfile = open(inference.logfile, 'w')
         outputfile = open(inference.outputfile, 'w')
