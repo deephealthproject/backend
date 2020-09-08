@@ -32,6 +32,14 @@ DATA_DIR='data'
 RABBITMQ_BROKER_URL='amqp://guest:guest@localhost'
 
 # Celery settings
-CELERY_ACCEPT_CONTENT='json' # list of comma separated values
+CELERY_ACCEPT_CONTENT='json'
 CELERY_RESULT_BACKEND='db+sqlite:///results.sqlite'
 CELERY_TASK_SERIALIZER='json'
+
+# OAuth settings
+DRFSO2_PROPRIETARY_BACKEND_NAME='GithubOAuth2'
+DRFSO2_URL_NAMESPACE='social'
+
+# GitHub configuration
+SOCIAL_AUTH_GITHUB_KEY=''
+SOCIAL_AUTH_GITHUB_SECRET=''
