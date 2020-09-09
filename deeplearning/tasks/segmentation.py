@@ -7,7 +7,8 @@ from pathlib import Path
 import numpy as np
 import os
 import pyeddl.eddl as eddl
-import pyeddl.eddlT as eddlT
+from pyeddl.tensor import Tensor
+
 import pyecvl.ecvl as ecvl
 import random
 from celery import shared_task
@@ -137,9 +138,9 @@ def segment(args):
             eddl.load(net, pretrained)
             logging.info('Weights loaded')
 
-        images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
+        images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
         if train:
-            gts = eddlT.create([batch_size, d.n_channels_gt_, size[0], size[1]])
+            gts = Tensor([batch_size, d.n_channels_gt_, size[0], size[1]])
 
         # TODO create gts also in test if they exist
 
@@ -184,17 +185,19 @@ def segment(args):
                     d.SetSplit(ecvl.SplitType.validation)
                     evaluator.ResetEval()
                     for j in range(num_batches_val):
-                        print(f'Val Epoch: {e + 1}/{args.epochs}  [{i + 1}/{num_batches_val}] ', end='', flush=True)
+                        logging.info(f'Val Epoch: {e + 1}/{args.epochs}  [{j + 1}/{num_batches_val}]')
+                        print(f'Val Epoch: {e + 1}/{args.epochs}  [{j + 1}/{num_batches_val}] ', end='', flush=True)
                         d.LoadBatch(images, gts)
                         images.div_(255.0)
                         gts.div_(255.0)
                         eddl.forward(net, [images])
-                        output = eddl.getTensor(out_)
+                        output = eddl.getOutput(out_)
                         for k in range(batch_size):
-                            img_ = eddlT.select(output, k)
-                            gts_ = eddlT.select(gts, k)
+                            img_ = output.select([str(k)])
+                            gts_ = gts.select([str(k)])
                             a, b = np.array(img_, copy=False), np.array(gts_, copy=False)
                             iou = evaluator.BinaryIoU(a, b)
+                            logging.info('- IoU: %.6g ' % iou)
                             print('- IoU: %.6g ' % iou, flush=True)
 
                     last_miou = evaluator.MIoU()
@@ -219,11 +222,11 @@ def segment(args):
                 d.LoadBatch(images)
                 images.div_(255.0)
                 eddl.forward(net, [images])
-                preds = eddl.getTensor(out_)
+                preds = eddl.getOutput(out_)
 
                 for k in range(batch_size):
-                    pred = eddlT.select(preds, k)
-                    # gt = eddlT.select(gts, k)
+                    pred = preds.select([str(k)])
+                    # gt = gts.select([str(k)])
                     # pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
                     pred_np = np.array(pred, copy=False)
                     # iou = evaluator.BinaryIoU(pred_np, gt)

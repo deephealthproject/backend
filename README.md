@@ -11,7 +11,7 @@ API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend/swag
 ### Requirements
 - Python3.6+
 - curl -- `sudo apt install curl`
-- **PyECVL 0.2.0+** and **PyEDDL 0.6.0+**
+- **PyECVL 0.4.2+** and **PyEDDL 0.8.0+**
 
 Clone and install back-end with:
 

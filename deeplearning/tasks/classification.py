@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import os
 import pyeddl.eddl as eddl
-import pyeddl.eddlT as eddlT
+from pyeddl.tensor import Tensor
 import pyecvl.ecvl as ecvl
 import random
 from celery import shared_task
@@ -112,8 +112,8 @@ def classificate(args):
             logging.info('Weights loaded')
 
         # Create tensor for images and labels
-        images = eddlT.create([batch_size, d.n_channels_, size[0], size[1]])
-        labels = eddlT.create([batch_size, num_classes])
+        images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
+        labels = Tensor([batch_size, num_classes])
 
         logging.info(f'Starting {args.mode}')
         print(f'Starting {args.mode}', flush=True)
@@ -200,7 +200,7 @@ def classificate(args):
                 #     f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
                 # Save network predictions
                 for i in range(batch_size):
-                    pred = np.array(eddlT.select(eddl.getTensor(out), i), copy=False)
+                    pred = np.array(eddl.getOutput(out).select([str(i)]), copy=False)
                     # gt = np.argmax(np.array(labels)[indices])
                     # pred = np.append(pred, gt).reshape((1, num_classes + 1))
                     preds = np.append(preds, pred, axis=0)

@@ -591,20 +591,20 @@ class StopProcessViewSet(views.APIView):
         serializer = serializers.StopProcessSerializer(data=request.data)
         if serializer.is_valid():
             process_id = serializer.data['process_id']
-            weights = models.ModelWeights.objects.filter(celery_id=process_id)
+            training = models.Training.objects.filter(celery_id=process_id)
             infer = models.Inference.objects.filter(celery_id=process_id)
             response = {"result": "Process stopped"}
-            if not weights.exists() and not infer.exists():
+            if not training.exists() and not infer.exists():
                 # already deleted weight/training or inference
                 return Response({"result": "Process already stopped or non existing"}, status=status.HTTP_404_NOT_FOUND)
-            elif weights:
-                weights = weights.first()
-                celery_id = weights.celery_id
+            elif training:
+                training = training.first()
+                celery_id = training.celery_id
                 celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
                 response = {"result": "Training stopped"}
                 # delete the ModelWeights entry from db
                 # also delete ModelWeights fk in project
-                weights.delete()
+                training.delete()
             elif infer:
                 infer = infer.first()
                 celery_id = infer.celery_id
