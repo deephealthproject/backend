@@ -62,7 +62,7 @@ class Dataset(models.Model):
 class DatasetPermission(models.Model):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission = models.CharField(choices=PERM, max_length=6)  # Currently unused
+    permission = models.CharField(choices=PERM, max_length=6, null=True, blank=True)  # Currently unused
 
 
 class Inference(models.Model):
@@ -103,8 +103,8 @@ class ModelWeights(models.Model):
     location = models.CharField(max_length=2048)
     name = models.CharField(max_length=200)
 
-    model_id = models.ForeignKey(Model, on_delete=models.PROTECT)
-    dataset_id = models.ForeignKey(Dataset, on_delete=models.PROTECT)
+    model_id = models.ForeignKey(Model, on_delete=models.CASCADE)
+    dataset_id = models.ForeignKey(Dataset, on_delete=models.CASCADE)
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     public = models.BooleanField(default=False)
 
@@ -121,7 +121,7 @@ class ModelWeights(models.Model):
 class ModelWeightsPermission(models.Model):
     modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission = models.CharField(choices=PERM, max_length=6)  # Currently unused
+    permission = models.CharField(choices=PERM, max_length=6, null=True, blank=True)  # Currently unused
 
 
 class Project(models.Model):
