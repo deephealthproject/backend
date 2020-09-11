@@ -33,7 +33,7 @@ import requests
 def backend_load_test(args):
     base_url = args.backend_url
 
-    infer_payload =  {
+    infer_payload = {
         "modelweights_id": args.modelweights_id,
         "dataset_id": args.dataset_id,
         "project_id": args.project_id
@@ -43,7 +43,7 @@ def backend_load_test(args):
     start = time.perf_counter()
     # start jobs
     for _ in range(args.n_jobs):
-        r = requests.post(base_url+'inference', data=infer_payload)
+        r = requests.post(base_url + 'inference', data=infer_payload)
         if r.status_code != 201:
             print(r.text)
             raise RuntimeError(r.text)
@@ -57,7 +57,7 @@ def backend_load_test(args):
     while not finished:
         finished = True
         for proc_id in procs:
-            r = requests.get(base_url+'status', params={'process_id':proc_id})
+            r = requests.get(base_url + 'status', params={'process_id': proc_id})
             fin = (r.json()['status']['process_status'] == 'finished')
             finished &= fin
             # if (fin):
@@ -94,6 +94,7 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     backend_load_test(args)
+
 
 if __name__ == '__main__':
     main()

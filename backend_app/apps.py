@@ -15,4 +15,5 @@ class BackendAppConfig(AppConfig):
         os.makedirs(opjoin(settings.INFERENCE_DIR, 'logs'), exist_ok=True)
 
         os.makedirs(settings.DATASETS_DIR, exist_ok=True)
+        os.makedirs(settings.MODELS_DIR, exist_ok=True)
         os.makedirs(settings.OUTPUTS_DIR, exist_ok=True)

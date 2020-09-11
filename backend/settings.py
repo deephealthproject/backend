@@ -180,6 +180,7 @@ DATA_DIR = env('DATA_DIR')
 TRAINING_DIR = os.path.join(DATA_DIR, 'training')
 INFERENCE_DIR = os.path.join(DATA_DIR, 'inference')
 DATASETS_DIR = os.path.join(DATA_DIR, 'datasets')
+MODELS_DIR = os.path.join(DATA_DIR, 'models')
 OUTPUTS_DIR = os.path.join(INFERENCE_DIR, 'outputs')
 
 # Static files (CSS, JavaScript, Images)

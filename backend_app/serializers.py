@@ -54,14 +54,24 @@ class InferenceSingleSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         if not data.get('image_url') and not data.get('image_data'):
-            raise serializers.ValidationError("At least one of `image_url` and `image_data` is needed.")
+            raise serializers.ValidationError("At least one between `image_url` and `image_data` is needed.")
         return data
 
 
 class ModelSerializer(serializers.ModelSerializer):
+    onnx_url = serializers.URLField(required=False)
+    onnx_data = serializers.FileField(required=False)
+    dataset_id = serializers.PrimaryKeyRelatedField(required=False, queryset=models.Dataset.objects.all())
+
     class Meta:
         model = models.Model
-        fields = ['id', 'name', 'location', 'task_id']
+        fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id']
+        write_only_fields = ['onnx_url', 'onnx_data', 'dataset_id']
+
+    def validate(self, data):
+        if not data.get('onnx_url') and not data.get('onnx_data'):
+            raise serializers.ValidationError("At least one between `onnx_url` and `onnx_data` is needed.")
+        return data
 
 
 class ModelWeightsSerializer(serializers.ModelSerializer):
@@ -192,3 +202,7 @@ class StatusStatusResponse(serializers.Serializer):
 class StatusResponse(serializers.Serializer):
     result = serializers.CharField()
     status = StatusStatusResponse()
+
+
+class ModelStatusResponse(serializers.Serializer):
+    result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS"])

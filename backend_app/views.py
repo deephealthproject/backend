@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import requests
 import yaml
+from celery import shared_task
 from celery.result import AsyncResult
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -225,7 +226,46 @@ class InferenceSingleViewSet(views.APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@shared_task
+def onnx_download(url, model_out_path):
+    r = requests.get(url, allow_redirects=True)
+    if r.status_code == 200:
+        with open(model_out_path, 'wb') as f:
+            f.write(r.content)
+
+
+class ModelStatusViewSet(views.APIView):
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
+                                             "Pass a required UUID representing a model upload process.",
+                                             type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, required=False)],
+        responses=swagger.ModelStatusView_get_response
+    )
+    def get(self, request, *args, **kwargs):
+        """Retrieve results about a model upload process
+
+        This API provides information about a model upload process. It returns the status of the operation:
+        - PENDING: The task is waiting for execution.
+        - STARTED: The task has been started.
+        - RETRY: The task is to be retried, possibly because of failure.
+        - FAILURE: The task raised an exception, or has exceeded the retry limit.
+        - SUCCESS: The task executed successfully.
+        """
+        if not self.request.query_params.get('process_id'):
+            error = {'Error': f'Missing required parameter `process_id`'}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+        process_id = self.request.query_params.get('process_id')
+        model = models.Model.objects.filter(celery_id=process_id)
+        if not model:
+            # already deleted model
+            return Response({"result": "Process stopped before finishing or non existing."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"result": AsyncResult(process_id).status}, status=status.HTTP_200_OK)
+
+
 class ModelViewSet(mixins.ListModelMixin,
+                   mixins.CreateModelMixin,
                    viewsets.GenericViewSet):
     queryset = models.Model.objects.all()
     serializer_class = serializers.ModelSerializer
@@ -250,6 +290,58 @@ class ModelViewSet(mixins.ListModelMixin,
         The optional `task_id` parameter is used to filter them based on the task the models are used for.
         """
         return super().list(request)
+
+    def create(self, request, *args, **kwargs):
+        """TODO docs
+
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            name = serializer.validated_data.get('name')
+            # task = serializer.validated_data.get('task_id')
+            model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'  # TODO this overwrite the file if exists
+            celery_id = None
+            response = None
+            if serializer.validated_data.get('onnx_url'):
+                # download onnx file from url
+                try:
+                    url = serializer.validated_data.pop('onnx_url')
+                    celery_id = onnx_download.delay(url, model_out_path)
+                    celery_id = celery_id.id
+                    response = {"result": "ok", "process_id": celery_id}
+                except requests.exceptions.RequestException:
+                    # URL malformed
+                    return Response({'error': 'URL is malformed'}, status=status.HTTP_400_BAD_REQUEST)
+            elif serializer.validated_data.get('onnx_data'):
+                onnx_data = serializer.validated_data.pop('onnx_data')
+                # onnx file was uploaded
+                onnx_data = onnx_data.read()
+                with open(model_out_path, 'wb') as f:
+                    f.write(onnx_data)
+                response = {"result": "ok"}
+            else:
+                return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Check for dataset_id parameter
+            # If given the current model has been already trained on that dataset
+            if serializer.validated_data.get('dataset_id'):
+                # Current onnx contains weight on the "dataset" dataset
+                dataset = serializer.validated_data.pop('dataset_id')
+                # Update the path and celery_id and save
+                model = serializer.save(location=model_out_path, celery_id=celery_id)
+                weight = models.ModelWeights.objects.create(
+                    location=model.location,
+                    name=model.name + '_ONNX',
+                    model_id=model,
+                    dataset_id=dataset
+                )
+                models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
+            else:
+                serializer.save(location=model_out_path, celery_id=celery_id)
+
+            headers = self.get_success_headers(serializer.data)
+            return Response(response, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,

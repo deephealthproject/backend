@@ -88,15 +88,20 @@ inferences_post_responses = {
                                     "error": "Non existing weights_id"
                                 }})
 }
-
+ModelStatusView_get_response = {
+    '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
+        "application/json": {
+            "result": "SUCCESS"
+        }
+    })
+}
 OutputViewSet_get_responses = {
     '200': openapi.Response('response for classification', serializers.OutputsResponse, examples={
         "application/json": {
-            "outputs": [
-                [[
-                    "image.jpg",
-                    [5.2e-7, 3e-8, 0.00001397, 0.00003845, 9e-8, 7.2e-7, 0, 0.99987125, 1.4e-7, 0.0000748]
-                ]]
+            "outputs": [[[
+                "image.jpg",
+                [5.2e-7, 3e-8, 0.00001397, 0.00003845, 9e-8, 7.2e-7, 0, 0.99987125, 1.4e-7, 0.0000748]
+            ]]
             ]
         }}
                             )}

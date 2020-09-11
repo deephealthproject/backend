@@ -1,7 +1,10 @@
+import os
 from os.path import join as opjoin
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 # def default_logfile_path(basedir, *args):
 #     return opjoin(basedir, *args, f'{uuid.uuid4().hex}.log')
@@ -85,6 +88,7 @@ class Model(models.Model):
     name = models.CharField(max_length=32)
     location = models.CharField(max_length=2048)
 
+    celery_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
 
     class Meta:
@@ -192,3 +196,11 @@ class TrainingSetting(models.Model):
 
     def __str__(self):
         return self.value
+
+
+@receiver(pre_delete, sender=Model, dispatch_uid='model_delete_signal')
+@receiver(pre_delete, sender=ModelWeights, dispatch_uid='modelweight_delete_signal')
+def file_deleted(sender, instance, using, **kwargs):
+    # Delete onnx file from disk
+    if os.path.isfile(instance.location):
+        os.remove(instance.location)

@@ -24,6 +24,7 @@ router.add_api_view('inference', path('inference', views.InferenceViewSet.as_vie
 router.add_api_view('inferenceSingle',
                     path('inferenceSingle', views.InferenceSingleViewSet.as_view(), name='inferenceSingle'))
 router.add_api_view('status', path('status', views.StatusView.as_view(), name='status'))
+router.add_api_view('modelStatus', path('modelStatus', views.ModelStatusViewSet.as_view(), name='modelStatus'))
 router.add_api_view('stopProcess', path('stopProcess', views.StopProcessViewSet.as_view(), name='stopProcess'))
 router.add_api_view('train', path('train', views.TrainViewSet.as_view(), name='train'))
 router.add_api_view('output', path('output', views.OutputViewSet.as_view(), name='output'))
