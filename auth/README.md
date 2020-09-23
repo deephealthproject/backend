@@ -115,3 +115,15 @@ curl "http://mysite/backend/auth/testUser/" --header "Authorization: Bearer <acc
 # Response
 > {"username": "dhtest"}
 ```
+
+
+## Revoke token
+
+Tokens can be revoked (e.g. for logging out an user) using `/revoke-token` API.
+```shell script
+# Request
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "client_id=<client_id>&token=<token>" http://mysite/backend/auth/revoke-token/
+
+# Response
+> {""}  # 204 No Content
+```
