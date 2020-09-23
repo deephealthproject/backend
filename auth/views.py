@@ -1,3 +1,4 @@
+from rest_framework import mixins, status, views, viewsets
 from django.contrib.auth.models import User
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -6,8 +7,7 @@ from rest_framework import views
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 
-from auth import serializers
-from .serializers import UserSerializer
+from auth import serializers, swagger
 
 
 # Test API
@@ -67,4 +67,27 @@ class CreateUserView(CreateAPIView):
     permission_classes = [
         permissions.AllowAny  # Or anon users can't register
     ]
-    serializer_class = UserSerializer
+    serializer_class = serializers.UserSerializer
+
+
+class UsersViewSet(mixins.ListModelMixin,
+                   mixins.RetrieveModelMixin,
+                   viewsets.GenericViewSet):
+    queryset = User.objects.all()
+    serializer_class = serializers.UserSerializer
+
+    @swagger_auto_schema(responses=swagger.users_list_response)
+    def list(self, request, *args, **kwargs):
+        """Get the list users
+
+        This method returns all the registered users.
+        """
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(responses=swagger.users_retrieve_response)
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single user
+
+        This method returns the `{id}` user.
+        """
+        return super().retrieve(request, *args, **kwargs)
