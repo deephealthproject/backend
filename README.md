@@ -1,10 +1,10 @@
 # DeepHealth Toolkit back-end
 
-[<img src="https://validator.swagger.io/validator?url=https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger?format=openapi" alt="Swagger online validator badge">](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger)
+[<img src="https://validator.swagger.io/validator?url=https://jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger?format=openapi" alt="Swagger online validator badge">](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger)
 
 The DeepHealth back-end interacts with the front-end, serving various APIs. It receives a configuration from the front-end then runs a deep learning pipeline based on PyECVL and PyEDDL.
 
-API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger)
+API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger)
 
 ## Installation
 
