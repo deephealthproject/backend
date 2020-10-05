@@ -1,29 +1,53 @@
 [
-{
-  "model": "backend_app.model",
-  "pk": 1,
-  "fields": {
-    "name": "LeNet",
-    "location": "LeNetPath",
-    "task_id": 1
+  {
+    "model": "backend_app.model",
+    "pk": 1,
+    "fields": {
+      "name": "LeNet",
+      "location": "%MODELS_PATH%/lenet.onnx",
+      "celery_id": null,
+      "task_id": 1
+    }
+  },
+  {
+    "model": "backend_app.model",
+    "pk": 2,
+    "fields": {
+      "name": "VGG16",
+      "location": "%MODELS_PATH%/vgg16_in224.onnx",
+      "celery_id": null,
+      "task_id": 1
+    }
+  },
+  {
+    "model": "backend_app.model",
+    "pk": 3,
+    "fields": {
+      "name": "SegNet",
+      "location": "%MODELS_PATH%/segnet_in192.onnx",
+      "celery_id": null,
+      "task_id": 2
+    }
+  },
+
+    {
+    "model": "backend_app.model",
+    "pk": 5,
+    "fields": {
+      "name": "VGG16_isic",
+      "location": "%MODELS_PATH%/pretrained/vgg16_in224_isic.onnx",
+      "celery_id": null,
+      "task_id": 1
+    }
+  },
+  {
+    "model": "backend_app.model",
+    "pk": 6,
+    "fields": {
+      "name": "SegNet_Pneumothorax",
+      "location": "%MODELS_PATH%/pretrained/SegNet_Pneumothorax.onnx",
+      "celery_id": null,
+      "task_id": 2
+    }
   }
-},
-{
-  "model": "backend_app.model",
-  "pk": 2,
-  "fields": {
-    "name": "vgg",
-    "location": "vggpath",
-    "task_id": 1
-  }
-},
-{
-  "model": "backend_app.model",
-  "pk": 4,
-  "fields": {
-    "name": "SegNet",
-    "location": "path",
-    "task_id": 2
-  }
-}
 ]

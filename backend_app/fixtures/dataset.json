@@ -11,7 +11,7 @@
 },
 {
   "model": "backend_app.dataset",
-  "pk": 5,
+  "pk": 2,
   "fields": {
     "name": "ISIC segmentation",
     "path": "/mnt/data/DATA/isic_skin_lesion/isic_segmentation.yml",
@@ -21,7 +21,7 @@
 },
 {
   "model": "backend_app.dataset",
-  "pk": 55,
+  "pk": 3,
   "fields": {
     "name": "ISIC classification",
     "path": "/mnt/data/DATA/isic_skin_lesion/isic.yml",
@@ -31,7 +31,7 @@
 },
 {
   "model": "backend_app.dataset",
-  "pk": 152,
+  "pk": 4,
   "fields": {
     "name": "Pneumothorax",
     "path": "/mnt/data/DATA/siim-train-test/siim/pneumothorax.yml",

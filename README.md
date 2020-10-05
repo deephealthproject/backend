@@ -47,8 +47,12 @@ python manage.py migrate
 # Creating an admin user
 python manage.py createsuperuser
 
-# Load db default entries
-python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json auth.json
+# Initialize Django fixtures for the DB init
+# This will also download ONNX weights of the models
+python scripts/init_fixtures.py
+
+# Load fixtures into the DB (default entries)
+python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json modelweights.json auth.json
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>

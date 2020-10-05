@@ -1,0 +1,50 @@
+[
+  {
+    "model": "backend_app.modelweights",
+    "pk": 1,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/lenet_mnist.onnx",
+      "name": "LeNet_MNSIT",
+      "model_id": 1,
+      "dataset_id": 1,
+      "pretrained_on": null,
+      "public": true
+    }
+  },
+  {
+    "model": "backend_app.modelweights",
+    "pk": 2,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/segnet_isic.onnx",
+      "name": "SegNet_ISIC",
+      "model_id": 3,
+      "dataset_id": 2,
+      "pretrained_on": null,
+      "public": true
+    }
+  },
+  {
+    "model": "backend_app.modelweights",
+    "pk": 3,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/vgg16_in224_isic.onnx",
+      "name": "VGG16_ISIC",
+      "model_id": 2,
+      "dataset_id": 3,
+      "pretrained_on": null,
+      "public": true
+    }
+  },
+  {
+    "model": "backend_app.modelweights",
+    "pk": 4,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/SegNet_Pneumothorax.onnx",
+      "name": "SegNet_Pneumothorax",
+      "model_id": 3,
+      "dataset_id": 4,
+      "pretrained_on": null,
+      "public": false
+    }
+  }
+]
