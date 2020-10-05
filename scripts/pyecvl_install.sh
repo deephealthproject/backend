@@ -1,19 +1,22 @@
 #!/bin/bash
 
-PYECVL_TAG="${1:-0.4.2}"
+# Set PyECVL default version
+PYECVL_TAG="${1:-0.5.0}"
 
 # PyECVL cloning
 echo "Cloning PyECVL"
 git clone --recurse-submodules --jobs 2 \
   https://github.com/deephealthproject/pyecvl.git
 cd pyecvl
+
 git checkout tags/"${PYECVL_TAG}"
 PYECVL_ROOT=$(pwd)
 
 # eddl and PyEDDL
 echo "Installing PyEDDL"
 cd third_party/pyeddl
-export PYEDDL_ROOT=$(pwd)
+git fetch && git checkout ff6b2c123a99734c084038ed465bea7065d70109
+PYEDDL_ROOT=$(pwd)
 cd third_party/eddl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIB=ON -DBUILD_PROTOBUF=ON \
