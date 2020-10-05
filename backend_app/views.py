@@ -532,7 +532,7 @@ class ProjectViewSet(mixins.ListModelMixin,
     def create(self, request, *args, **kwargs):
         """Create a new project
 
-        Create a new project.
+        Create a new project given name and an associated task.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -711,6 +711,7 @@ class StopProcessViewSet(views.APIView):
 
 
 class TaskViewSet(mixins.ListModelMixin,
+                  mixins.RetrieveModelMixin,
                   viewsets.GenericViewSet):
     queryset = models.Task.objects.all()
     serializer_class = serializers.TaskSerializer
@@ -789,7 +790,7 @@ class TrainViewSet(views.APIView):
 
             weight.save()  # Generate an id for the weight
             ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
-            weight.location = Path(opjoin(ckpts_dir, f'{weight.id}.bin')).absolute()
+            weight.location = Path(opjoin(ckpts_dir, f'{weight.id}.onnx')).absolute()
             weight.save()
 
             # Must assign permissions to new weights

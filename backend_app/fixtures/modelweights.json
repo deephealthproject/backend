@@ -4,7 +4,7 @@
     "pk": 1,
     "fields": {
       "location": "%MODELS_PATH%/pretrained/lenet_mnist.onnx",
-      "name": "LeNet_MNSIT",
+      "name": "LeNet_MNIST",
       "model_id": 1,
       "dataset_id": 1,
       "pretrained_on": null,
