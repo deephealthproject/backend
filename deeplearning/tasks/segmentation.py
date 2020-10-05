@@ -50,15 +50,15 @@ def segment(args):
     inference = None
     training = None
     output_dir = None
-
+    net = None
     train = True if args.mode == 'training' else False
     batch_size = args.batch_size if args.mode == 'training' else args.test_batch_size
 
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
+    pretrained = None
     if train:
         training = dj_models.Training.objects.get(id=args.training_id)
-        pretrained = None
         if weight.pretrained_on:
             pretrained = weight.pretrained_on.location
     else:
@@ -67,12 +67,16 @@ def segment(args):
         pretrained = weight.location
 
     save_stdout = sys.stdout
-    size = [args.input_h, args.input_w]  # Height, width
-    # ctype = ecvl.ColorType.GRAY
-    try:
-        model = bindings.models_binding[args.model_id]
-    except KeyError:
-        raise Exception(f'Model with id: {args.model_id} not found in bindings.py')
+    if pretrained:
+        net = eddl.import_net_from_onnx_file(pretrained)
+    else:
+        net = eddl.import_net_from_onnx_file(weight.model_id.location)
+    if train:
+        size = [args.input_h, args.input_w]  # Height, width
+    else:  # inference
+        # get size from input layers
+        size = net.layers[0].input.shape[2:]
+
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
     except KeyError:
@@ -109,9 +113,9 @@ def segment(args):
     dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
     d = dataset.d
     num_classes = dataset.num_classes
-    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    out_ = eddl.Sigmoid(model(in_, num_classes))
-    net = eddl.Model([in_], [out_])
+    # in_ = eddl.Input([d.n_channels_, size[0], size[1]])
+    # out_ = eddl.Sigmoid(model(in_, num_classes))
+    # net = eddl.Model([in_], [out_])
     if train:
         logfile = open(Path(training.logfile), 'w')
     else:
@@ -125,18 +129,24 @@ def segment(args):
         print('args: ' + json.dumps(args, indent=2, sort_keys=True), flush=True)
         logging.info('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
-        eddl.build(
-            net,
-            eddl.adam(args.lr),
-            [bindings.losses_binding.get(args.loss)],
-            [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
-        )
+        if train:
+            eddl.build(
+                net,
+                eddl.adam(args.lr),
+                [bindings.losses_binding.get(args.loss)],
+                [bindings.metrics_binding.get(args.metric)],
+                eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
+            )
+        else:  # inference
+            eddl.build(
+                net,
+                o=eddl.adam(args.lr),
+                cs=eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU(),
+                # cs=eddl.CS_CPU(),
+                init_weights=False
+            )
+        net.resize(batch_size)  # resize manually since we don't use "fit"
         eddl.summary(net)
-
-        if pretrained and os.path.exists(pretrained):
-            eddl.load(net, pretrained)
-            logging.info('Weights loaded')
 
         images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
         if train:
@@ -191,7 +201,7 @@ def segment(args):
                         images.div_(255.0)
                         gts.div_(255.0)
                         eddl.forward(net, [images])
-                        output = eddl.getOutput(out_)
+                        output = eddl.getOutput(eddl.getOut(net)[0])
                         for k in range(batch_size):
                             img_ = output.select([str(k)])
                             gts_ = gts.select([str(k)])
@@ -206,11 +216,13 @@ def segment(args):
 
                     if last_miou > miou:
                         miou = last_miou
-                        eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                        # eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                        eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight_id}.onnx'))
                         logging.info('Weights saved')
                         print('Weights saved')
                 else:
-                    eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                    # eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                    eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight_id}.onnx'))
                     print('Weights saved')
         else:
             d.SetSplit(ecvl.SplitType.test)
@@ -222,7 +234,7 @@ def segment(args):
                 d.LoadBatch(images)
                 images.div_(255.0)
                 eddl.forward(net, [images])
-                preds = eddl.getOutput(out_)
+                preds = eddl.getOut(net)[0]
 
                 for k in range(batch_size):
                     pred = preds.select([str(k)])
@@ -257,6 +269,4 @@ def segment(args):
         print('<done>', flush=True)
     logfile.close()
     del net
-    del out_
-    del in_
     return

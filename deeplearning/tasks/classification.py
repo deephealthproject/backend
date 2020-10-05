@@ -32,9 +32,9 @@ def classificate(args):
     batch_size = args.batch_size if args.mode == 'training' else args.test_batch_size
     weight_id = args.weight_id
     weight = dj_models.ModelWeights.objects.get(id=weight_id)
+    pretrained = None
     if train:
         training = dj_models.Training.objects.get(id=args.training_id)
-        pretrained = None
         if weight.pretrained_on:
             pretrained = weight.pretrained_on.location
     else:
@@ -42,11 +42,17 @@ def classificate(args):
         inference = dj_models.Inference.objects.get(id=inference_id)
         pretrained = weight.location
     save_stdout = sys.stdout
-    size = [args.input_h, args.input_w]  # Height, width
-    try:
-        model = bindings.models_binding[args.model_id]
-    except KeyError:
-        raise Exception(f'Model with id: {args.model_id} not found in bindings.py')
+    if pretrained:
+        net = eddl.import_net_from_onnx_file(pretrained)
+    else:
+        net = eddl.import_net_from_onnx_file(weight.model_id.location)
+
+    if train:
+        size = [args.input_h, args.input_w]  # Height, width
+    else:  # inference
+        # get size from input layers
+        size = net.layers[0].input.shape[2:]
+
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
     except KeyError:
@@ -84,9 +90,9 @@ def classificate(args):
     dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
     d = dataset.d
     num_classes = dataset.num_classes
-    in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    out = model(in_, num_classes)  # out is already softmaxed in classific models
-    net = eddl.Model([in_], [out])
+    # in_ = eddl.Input([d.n_channels_, size[0], size[1]])
+    # out = model(in_, num_classes)  # out is already softmaxed in classific models
+    # net = eddl.Model([in_], [out])
 
     if train:
         logfile = open(Path(training.logfile), 'w')
@@ -98,18 +104,24 @@ def classificate(args):
         print('args: ' + json.dumps(args, indent=2, sort_keys=True), flush=True)
         logging.info('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
-        eddl.build(
-            net,
-            eddl.sgd(args.lr, 0.9),
-            [bindings.losses_binding.get(args.loss)],
-            [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
-        )
-        eddl.summary(net)
+        if train:
+            eddl.build(
+                net,
+                eddl.adam(args.lr),
+                [bindings.losses_binding.get(args.loss)],
+                [bindings.metrics_binding.get(args.metric)],
+                eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
+            )
+        else:  # inference
+            eddl.build(
+                net,
+                o=eddl.adam(args.lr),
+                cs=eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU(),
+                init_weights=False
+            )
+        net.resize(batch_size)  # resize manually since we don't use "fit"
 
-        if pretrained and os.path.exists(pretrained):
-            eddl.load(net, pretrained)
-            logging.info('Weights loaded')
+        eddl.summary(net)
 
         # Create tensor for images and labels
         images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
@@ -150,7 +162,8 @@ def classificate(args):
                         f'({net.losses[0].name}={total_loss / net.inferenced_samples:1.3f},'
                         f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
 
-                eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                # eddl.save(net, opjoin(ckpts_dir, f'{weight_id}.bin'))
+                eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight_id}.onnx'))
                 logging.info('Weights saved')
                 print('Weights saved', flush=True)
 
@@ -200,7 +213,7 @@ def classificate(args):
                 #     f'{net.metrics[0].name}={total_metric / net.inferenced_samples:1.3f})')
                 # Save network predictions
                 for i in range(batch_size):
-                    pred = np.array(eddl.getOutput(out).select([str(i)]), copy=False)
+                    pred = np.array(eddl.getOutput(eddl.getOut(net)[0]).select([str(i)]), copy=False)
                     # gt = np.argmax(np.array(labels)[indices])
                     # pred = np.append(pred, gt).reshape((1, num_classes + 1))
                     preds = np.append(preds, pred, axis=0)
@@ -211,6 +224,4 @@ def classificate(args):
         print('<done>')
     logfile.close()
     del net
-    del out
-    del in_
     return
