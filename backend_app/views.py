@@ -76,7 +76,7 @@ class DatasetViewSet(mixins.ListModelMixin,
         if task_id:
             self.queryset = self.queryset.filter(task_id=task_id)
             q_perm = q_perm.filter(task_id=task_id)
-        self.queryset |= q_perm  # Extend the public datasets with ones of the user
+        self.queryset = self.queryset.union(q_perm)  # Extend the public datasets with ones of the user
         return self.queryset
 
     @swagger_auto_schema(
@@ -359,8 +359,8 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             model_id = self.request.query_params.get('model_id')
             self.queryset = self.queryset.filter(model_id=model_id)
             q_perm = models.ModelWeights.objects.filter(
-                modelweightspermission__user=user, model_id=model_id)  # Get weights of current user
-            self.queryset |= q_perm
+                modelweightspermission__user=user, model_id=model_id, public=False)  # Get weights of current user
+            self.queryset = self.queryset.union(q_perm)
             return self.queryset
         else:
             return super(ModelWeightsViewSet, self).get_queryset()
