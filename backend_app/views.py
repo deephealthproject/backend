@@ -72,11 +72,12 @@ class DatasetViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         user = self.request.user
         task_id = self.request.query_params.get('task_id')
-        q_perm = models.Dataset.objects.filter(datasetpermission__user=user.id)  # Get datasets of current user
+        # Get datasets of current user
+        q_perm = models.Dataset.objects.filter(datasetpermission__user=user.id, public=False)
         if task_id:
             self.queryset = self.queryset.filter(task_id=task_id)
             q_perm = q_perm.filter(task_id=task_id)
-        self.queryset = self.queryset.union(q_perm)  # Extend the public datasets with ones of the user
+        self.queryset |= q_perm  # Extend the public datasets with ones of the user
         return self.queryset
 
     @swagger_auto_schema(
@@ -360,7 +361,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             self.queryset = self.queryset.filter(model_id=model_id)
             q_perm = models.ModelWeights.objects.filter(
                 modelweightspermission__user=user, model_id=model_id, public=False)  # Get weights of current user
-            self.queryset = self.queryset.union(q_perm)
+            self.queryset = self.queryset.union(q_perm).order_by('-id')
             return self.queryset
         else:
             return super(ModelWeightsViewSet, self).get_queryset()
@@ -631,9 +632,9 @@ class StatusView(views.APIView):
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
         process_id = self.request.query_params.get('process_id')
 
-        if models.ModelWeights.objects.filter(training__celery_id=process_id).exists():
+        if models.Training.objects.filter(celery_id=process_id).exists():
             process_type = 'training'
-            process = models.ModelWeights.objects.filter(training__celery_id=process_id).first()
+            process = models.Training.objects.filter(celery_id=process_id).first()
         elif models.Inference.objects.filter(celery_id=process_id).exists():
             process_type = 'inference'
             process = models.Inference.objects.filter(celery_id=process_id).first()
