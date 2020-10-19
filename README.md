@@ -6,6 +6,8 @@ The DeepHealth back-end interacts with the front-end, serving various APIs. It r
 
 API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend_new/swagger)
 
+DB schema: [https://drawsql.app/aimagelab/diagrams/api-0-2-0](https://drawsql.app/aimagelab/diagrams/api-0-2-0)
+
 ## Installation
 
 ### Requirements
