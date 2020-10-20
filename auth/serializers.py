@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from rest_framework import serializers
+from django.contrib.auth import password_validation
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -42,3 +43,26 @@ class SocialSerializer(serializers.Serializer):
     """
     provider = serializers.CharField(max_length=255, required=True)
     access_token = serializers.CharField(max_length=4096, required=True, trim_whitespace=True)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(max_length=128, write_only=True, required=True)
+    new_password1 = serializers.CharField(max_length=128, write_only=True, required=True)
+    new_password2 = serializers.CharField(max_length=128, write_only=True, required=True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Your old password was entered incorrectly. Please enter it again.')
+        return value
+
+    def validate(self, data):
+        if data['new_password1'] != data['new_password2']:
+            raise serializers.ValidationError({'new_password2': "The two password fields didn't match."})
+        password_validation.validate_password(data['new_password1'], self.context['request'].user)
+        return data
+
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data['new_password1'])
+        instance.save()
+        return instance

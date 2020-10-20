@@ -1,12 +1,11 @@
-from rest_framework import mixins, status, views, viewsets
+from rest_framework import mixins, status, views, viewsets, generics
 from django.contrib.auth.models import User
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import permissions
-from rest_framework import views
-from rest_framework.generics import CreateAPIView
+from rest_framework import permissions, views
 from rest_framework.response import Response
 
+from django.contrib.auth import get_user_model
 from auth import serializers, swagger
 
 
@@ -58,14 +57,14 @@ class GetUserView(views.APIView):
         return Response(serializers.UserSerializer(request.user).data)
 
 
-class CreateUserView(CreateAPIView):
+class CreateUserView(generics.CreateAPIView):
     """Create a new user
 
     This method creates a new user with username e password provided.
     """
     model = User
     permission_classes = [
-        permissions.AllowAny  # Or anon users can't register
+        permissions.AllowAny  # Otherwise anonymous are unable to register
     ]
     serializer_class = serializers.UserSerializer
 
@@ -91,3 +90,20 @@ class UsersViewSet(mixins.ListModelMixin,
         This method returns the `{id}` user.
         """
         return super().retrieve(request, *args, **kwargs)
+
+
+class ChangePasswordView(generics.UpdateAPIView):
+    serializer_class = serializers.ChangePasswordSerializer
+    model = get_user_model()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+    @swagger_auto_schema(responses=swagger.change_password_response)
+    def put(self, request, *args, **kwargs):
+        """Change a user password
+
+        This method change the password of the logged user.
+        """
+        return super().update(request, *args, **kwargs)

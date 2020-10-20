@@ -39,3 +39,8 @@ users_retrieve_response = {
                                     }
                             }),
 }
+
+change_password_response = {
+    '200': openapi.Response('On a successful operation, it returns an empty response.',
+                            examples={"application/json": {}}),
+}
