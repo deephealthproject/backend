@@ -31,18 +31,10 @@ class UserSerializerNotUnique(serializers.ModelSerializer):
         }
 
 
-# class GroupSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Group
-#         fields = ("name",)
-
-
-class SocialSerializer(serializers.Serializer):
-    """
-    Serializer which accepts an OAuth2 access token and provider.
-    """
-    provider = serializers.CharField(max_length=255, required=True)
-    access_token = serializers.CharField(max_length=4096, required=True, trim_whitespace=True)
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name']
 
 
 class ChangePasswordSerializer(serializers.Serializer):
