@@ -1,19 +1,16 @@
 import os
 from os.path import join as opjoin
 
-from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import pre_delete
-from django.dispatch import receiver
 
-# def default_logfile_path(basedir, *args):
-#     return opjoin(basedir, *args, f'{uuid.uuid4().hex}.log')
-PERM = [
-    ('VIEW', 'can view'),
-    ('ADD', 'can add'),
-    ('CHANGE', 'can change'),
-    ('DELETE', 'can delete'),
-]
+from django.dispatch import receiver
+from django.conf import settings
+
+
+class Perm(models.TextChoices):
+    OWNER = 'OWN', 'Can change and delete'  # Can change and delete. Full control
+    VIEWER = 'VIEW', 'Can view'  # Can only view
 
 
 def generate_file_path(filename, *args):
@@ -49,7 +46,7 @@ class Dataset(models.Model):
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
     public = models.BooleanField(default=False)
 
-    owners = models.ManyToManyField(User, through='DatasetPermission')
+    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission')
 
     class Meta:
         indexes = [models.Index(fields=['is_single_image'])]
@@ -61,8 +58,8 @@ class Dataset(models.Model):
 
 class DatasetPermission(models.Model):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission = models.CharField(choices=PERM, max_length=6, null=True, blank=True)  # Currently unused
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    permission = models.CharField(choices=Perm.choices, max_length=6, null=True, blank=True)  # Currently unused
 
 
 class Inference(models.Model):
@@ -88,6 +85,7 @@ class Model(models.Model):
     name = models.CharField(max_length=32)
     location = models.CharField(max_length=2048)
 
+    # A new model onnx is uploaded to backend async with celery.
     celery_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
 
@@ -108,7 +106,7 @@ class ModelWeights(models.Model):
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     public = models.BooleanField(default=False)
 
-    owners = models.ManyToManyField(User, through='ModelWeightsPermission')
+    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
 
     class Meta:
         # ordering = ['id']
@@ -120,18 +118,15 @@ class ModelWeights(models.Model):
 
 class ModelWeightsPermission(models.Model):
     modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission = models.CharField(choices=PERM, max_length=6, null=True, blank=True)  # Currently unused
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    permission = models.CharField(choices=Perm.choices, max_length=6, null=True, blank=True)  # Currently unused
 
 
 class Project(models.Model):
     name = models.CharField(max_length=32)
+    task_id = models.ForeignKey('backend_app.Task', on_delete=models.PROTECT)
 
-    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
-    # modelweights_id = models.ForeignKey(ModelWeights, on_delete=models.SET_NULL, null=True, blank=True)
-    # inference_id = models.ForeignKey(Inference, on_delete=models.SET_NULL, null=True, blank=True)
-
-    users = models.ManyToManyField(User)
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ProjectPermission', related_name='projects')
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -139,6 +134,12 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProjectPermission(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    permission = models.CharField(choices=Perm.choices, max_length=6, default=Perm.VIEWER)
 
 
 class Property(models.Model):

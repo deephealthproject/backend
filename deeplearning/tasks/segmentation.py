@@ -76,7 +76,6 @@ def segment(args):
     else:  # inference
         # get size from input layers
         size = net.layers[0].input.shape[2:]
-
     try:
         dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
     except KeyError:

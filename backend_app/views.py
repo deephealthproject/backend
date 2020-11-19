@@ -474,6 +474,11 @@ class OutputViewSet(views.APIView):
         return Response(response, status=status.HTTP_200_OK)
 
 
+# class ProjectPermViewSetT(mixins.ListModelMixin, viewsets.GenericViewSet):
+#     queryset = models.ProjectPermission.objects.all()
+#     serializer_class = serializers.ProjectPermissionSerializer
+
+
 class ProjectViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
@@ -496,13 +501,16 @@ class ProjectViewSet(mixins.ListModelMixin,
         except models.Project.DoesNotExist:
             return None
 
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_get_response)
     def list(self, request, *args, **kwargs):
         """Loads all users projects
 
         This method lists all the available projects for the current user.
         """
-        return super().list(request, *args, **kwargs)
+        ret = super().list(request, *args, **kwargs)
+        return ret
 
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response)
     def retrieve(self, request, *args, **kwargs):
         """Retrieve a single project
 
@@ -510,68 +518,20 @@ class ProjectViewSet(mixins.ListModelMixin,
         """
         return super().retrieve(request, *args, **kwargs)
 
-    # Add users to a project
-    def manage_users(self, project, users):
-        for u in users:
-            user = User.objects.get(username__exact=u.get('username'))
-            project.users.add(user)
-        return project
-
-    # Check if users (list of user) exist
-    def check_users(self, users):
-        if not len(users):
-            return Response({"Error": f"Users list cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
-        for u in users:
-            try:
-                User.objects.get(username__exact=u.get('username'))
-            except ObjectDoesNotExist:
-                return Response({"Error": f"User `{u.get('username')}` does not exist"},
-                                status=status.HTTP_400_BAD_REQUEST)
-        return False
-
-    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_response)
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response)
     def create(self, request, *args, **kwargs):
         """Create a new project
 
-        Create a new project given name and an associated task.
+        Create a new project given name, an associated task and users who will own it.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            p = serializer.save()
+            serializer.save()
             headers = self.get_success_headers(serializer.data)
-            users = request.data.get('users')
-            response = self.check_users(users)
-            if response:
-                return response
-
-            p = self.manage_users(p, users)  # Get users from initial_data, that's bad
-            return Response(self.get_serializer(p).data, status=status.HTTP_201_CREATED, headers=headers)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, *args, **kwargs):
-        """Update an existing project
-
-        Update an existing project
-        """
-        project = self.get_obj(request.data['id'])
-        project_id = project.id
-        if not project:
-            error = {"Error": f"Project {request.data['id']} does not exist"}
-            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
-        users = request.data.get('users')
-        response = self.check_users(users)
-        if response:
-            return response
-
-        serializer = serializers.ProjectSerializer(project, data=request.data)
-        if serializer.is_valid():
-            p = serializer.save()
-            p.users.clear()
-            p = self.manage_users(p, users)  # Get users from initial_data, it's bad
-            # Returns all the elements
-            return self.list(request)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response)
     def update(self, request, *args, **kwargs):
         """Update an existing project
 
@@ -679,7 +639,8 @@ class StopProcessViewSet(views.APIView):
     def post(self, request):
         """Kill a training or inference process
 
-        Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs).
+        Stop a training process specifying a `process_id` (which is returned by `/train` or `/inference` APIs) and
+        delete all its data.
         """
         serializer = serializers.StopProcessSerializer(data=request.data)
         if serializer.is_valid():
@@ -695,15 +656,15 @@ class StopProcessViewSet(views.APIView):
                 celery_id = training.celery_id
                 celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
                 response = {"result": "Training stopped"}
-                # delete the ModelWeights entry from db
-                # also delete ModelWeights fk in project
+                # delete the Training entry from db
+                # also delete Training fk in project
                 training.delete()
             elif infer:
                 infer = infer.first()
                 celery_id = infer.celery_id
                 celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
                 response = {"result": "Inference stopped"}
-                # delete the ModelWeights entry from db
+                # delete the Inference entry from db
                 infer.delete()
 
             # todo delete log file? delete weight file?
@@ -797,7 +758,7 @@ class TrainViewSet(views.APIView):
             # Must assign permissions to new weights
             # Grant permission to current user
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=user,
-                                                         permission=models.PERM[0][0])
+                                                         permission=models.Perm.OWNER)
 
             # Create a logfile
             training = models.Training(modelweights_id=weight, project_id=project)

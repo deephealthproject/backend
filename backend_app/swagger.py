@@ -106,7 +106,31 @@ OutputViewSet_get_responses = {
         }}
                             )}
 
-ProjectViewSet_create_response = {
+ProjectViewSet_create_retrieve_update_response = {
+    '200': openapi.Response('Successful operation',
+                            serializers.ProjectSerializer(),
+                            examples={
+                                "application/json":
+                                    {
+                                        "id": 76,
+                                        "name": "newproj-test2",
+                                        "task_id": 2,
+                                        "users": [
+                                            {
+                                                "username": "dhtest",
+                                                "permission": "OWN"
+                                            },
+                                            {
+                                                "username": "admin",
+                                                "permission": "VIEW"
+                                            }
+                                        ]
+                                    }
+                            }
+                            )
+}
+
+ProjectViewSet_get_response = {
     '200': openapi.Response('Successful operation',
                             serializers.ProjectSerializer(many=True),
                             examples={
@@ -116,41 +140,55 @@ ProjectViewSet_create_response = {
                                             "id": 1,
                                             "name": "Classification mnist",
                                             "task_id": 1,
-                                            "modelweights_id": None,
-                                            "inference_id": 592,
                                             "users": [
-                                                {"username": "dhtest"}
+                                                {
+                                                    "username": "admin",
+                                                    "permission": "OWN"
+                                                },
+                                                {
+                                                    "username": "dhtest",
+                                                    "permission": "OWN"
+                                                }
                                             ]
                                         },
                                         {
                                             "id": 2,
                                             "name": "Segmentation isic",
                                             "task_id": 2,
-                                            "modelweights_id": None,
-                                            "inference_id": 528,
                                             "users": [
-                                                {"username": "dhtest"},
-                                                {"username": "dhtest2"}
+                                                {
+                                                    "username": "admin",
+                                                    "permission": "OWN"
+                                                },
+                                                {
+                                                    "username": "dhtest",
+                                                    "permission": "VIEW"
+                                                }
                                             ]
                                         },
                                         {
                                             "id": 3,
                                             "name": "Classification isic",
                                             "task_id": 1,
-                                            "modelweights_id": None,
-                                            "inference_id": None,
                                             "users": [
-                                                {"username": "dhtest"}
+                                                {
+                                                    "username": "admin",
+                                                    "permission": "VIEW"
+                                                },
+                                                {
+                                                    "username": "dhtest",
+                                                    "permission": "VIEW"
+                                                }
                                             ]
                                         }
                                     ]
-                            }
-                            )
+                            })
 }
 
 StatusView_get_response = {
     '200': openapi.Response('Status of process', serializers.StatusResponse())
 }
+
 StopProcessViewSet_post_response = {
     '200': openapi.Response('On a successful operation, it returns a message that confirmes the process interruption.',
                             serializers.GeneralResponse(),

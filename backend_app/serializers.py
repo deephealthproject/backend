@@ -1,9 +1,33 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework.utils import model_meta
 
 from auth import serializers as auth_serializers
 from backend_app import models
+from rest_framework import exceptions
+
+
+class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
+    def __init__(self, method_name=None, **kwargs):
+        super().__init__(**kwargs)
+        kwargs['source'] = '*'
+        self.read_only = False
+
+    def to_internal_value(self, data):
+        return {self.field_name: data}
+
+
+def check_users(users):
+    if not len(users):
+        raise exceptions.ParseError({"Error": f"'users' list cannot be empty"})
+    if not isinstance(users, list):
+        raise exceptions.ParseError({"Error": f"'users' must be a list of dictionaries"})
+    for u in users:
+        try:
+            get_user_model().objects.get(username__exact=u.get('username'))
+        except ObjectDoesNotExist:
+            raise exceptions.ParseError({"Error": f"User `{u.get('username')}` does not exist"})
 
 
 class AllowedPropertySerializer(serializers.ModelSerializer):
@@ -24,9 +48,9 @@ class DatasetSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         owners_data = validated_data.pop('owners')
         dataset = models.Dataset.objects.create(**validated_data)
-        perm = models.PERM[0][0]
+        perm = models.Perm.OWNER
         for owner_data in owners_data:
-            user = User.objects.get(username__exact=owner_data.get('username'))
+            user = get_user_model().objects.get(username__exact=owner_data.get('username'))
             _ = models.DatasetPermission.objects.get_or_create(user=user, dataset=dataset, permission=perm)
         return dataset
 
@@ -96,11 +120,11 @@ class ModelWeightsSerializer(serializers.ModelSerializer):
         if not len(owners_data):
             raise serializers.ValidationError({"Error": f"Owners list cannot be empty"})
 
-        perm = models.PERM[0][0]
+        perm = models.Perm.OWNER
         users = []
         # Give permissions to new users
         for owner_data in owners_data:
-            user = User.objects.get(username__exact=owner_data.get('username'))
+            user = get_user_model().objects.get(username__exact=owner_data.get('username'))
             users.append(user)
             _ = models.ModelWeightsPermission.objects.get_or_create(user=user, modelweight=weight, permission=perm)
         # Remove permissions to excluded users
@@ -110,12 +134,56 @@ class ModelWeightsSerializer(serializers.ModelSerializer):
         return weight
 
 
+class ProjectPermissionSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+
+    class Meta:
+        model = models.ProjectPermission
+        fields = ('username', 'permission')
+
+
 class ProjectSerializer(serializers.ModelSerializer):
-    users = auth_serializers.UserSerializer(many=True, read_only=True)
+    users = ReadWriteSerializerMethodField()
 
     class Meta:
         model = models.Project
         fields = ['id', 'name', 'task_id', 'users']
+
+    def get_users(self, obj):
+        qset = models.ProjectPermission.objects.filter(project=obj)
+        return [ProjectPermissionSerializer(pp).data for pp in qset]
+
+    def create(self, validated_data):
+        users = validated_data.pop('users')
+        check_users(users)
+        p = models.Project.objects.create(**validated_data)
+        for u in users:
+            user = get_user_model().objects.get(username__exact=u.get('username'))
+            perm = u.get('permission')
+            _ = models.ProjectPermission.objects.get_or_create(user=user, project=p, permission=perm)
+        return p
+
+    def update(self, instance, validated_data):
+        users = validated_data.pop('users')
+        check_users(users)
+        current_user = self.context['request'].user
+        current_user_perm = instance.projectpermission_set.get(user=current_user).permission
+        if current_user_perm == models.Perm.VIEWER:
+            # User has no rights. Abort
+            raise exceptions.PermissionDenied(
+                {"Error": f'User `{current_user}` does not have owner permission on this Project'})
+
+        # Revoke permissions for every users
+        instance.users.clear()
+
+        # Add new permissions
+        for u in users:
+            user = get_user_model().objects.get(username__exact=u.get('username'))
+            perm = u.get('permission')
+            pp = models.ProjectPermission.objects.get_or_create(user=user, project=instance)[0]
+            pp.permission = perm
+            pp.save()
+        return instance
 
 
 class PropertyListSerializer(serializers.ModelSerializer):

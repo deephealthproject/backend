@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Set PyECVL default version
-PYECVL_TAG="${1:-0.5.0}"
+PYECVL_TAG="${1:-0.5.1}"
 
 # PyECVL cloning
 echo "Cloning PyECVL"
 git clone --recurse-submodules --jobs 2 \
-  https://github.com/deephealthproject/pyecvl.git
-cd pyecvl
+  https://github.com/deephealthproject/pyecvl.git pyecvl_${PYECVL_TAG}
+cd pyecvl_${PYECVL_TAG}
 
 git checkout tags/"${PYECVL_TAG}"
 PYECVL_ROOT=$(pwd)
@@ -15,11 +15,11 @@ PYECVL_ROOT=$(pwd)
 # eddl and PyEDDL
 echo "Installing PyEDDL"
 cd third_party/pyeddl
-git fetch && git checkout ff6b2c123a99734c084038ed465bea7065d70109
+#git fetch && git checkout ff6b2c123a99734c084038ed465bea7065d70109
 PYEDDL_ROOT=$(pwd)
 cd third_party/eddl
 mkdir -p build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIB=ON -DBUILD_PROTOBUF=ON \
+cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON -DBUILD_PROTOBUF=ON \
   -DBUILD_TARGET=GPU -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF ..
 cmake --build . --config Release --parallel "$(nproc)"
 cmake --build . --target install

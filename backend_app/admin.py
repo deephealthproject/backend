@@ -35,8 +35,14 @@ class ModelWeightsAdmin(admin.ModelAdmin):
     inlines = (ModelWeightsPermission,)
 
 
+class ProjectPermission(admin.TabularInline):
+    model = models.ProjectPermission
+    extra = 3
+
+
 class ProjectAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.Project._meta.fields]
+    inlines = (ProjectPermission,)
 
 
 class PropertyAdmin(admin.ModelAdmin):
