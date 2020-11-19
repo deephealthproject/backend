@@ -518,11 +518,13 @@ class ProjectViewSet(mixins.ListModelMixin,
         """
         return super().retrieve(request, *args, **kwargs)
 
-    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response)
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response,
+                         request_body=swagger.ProjectViewSet_create_update_request)
     def create(self, request, *args, **kwargs):
         """Create a new project
 
         Create a new project given name, an associated task and users who will own it.
+        users list must contain the username of a user and his permission.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -531,7 +533,8 @@ class ProjectViewSet(mixins.ListModelMixin,
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response)
+    @swagger_auto_schema(responses=swagger.ProjectViewSet_create_retrieve_update_response,
+                         request_body=swagger.ProjectViewSet_create_update_request)
     def update(self, request, *args, **kwargs):
         """Update an existing project
 

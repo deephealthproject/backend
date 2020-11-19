@@ -106,6 +106,19 @@ OutputViewSet_get_responses = {
         }}
                             )}
 
+ProjectViewSet_create_update_request = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    required=['name', 'task_id', 'users'],
+    properties={
+        'name': openapi.Schema(type=openapi.TYPE_STRING),
+        'task_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'users': openapi.Schema(type=openapi.TYPE_ARRAY,
+                                items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'username': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'permission': openapi.Schema(type=openapi.TYPE_STRING),
+                                })),
+    },
+)
 ProjectViewSet_create_retrieve_update_response = {
     '200': openapi.Response('Successful operation',
                             serializers.ProjectSerializer(),
