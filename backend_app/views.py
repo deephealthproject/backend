@@ -99,7 +99,7 @@ class DatasetViewSet(mixins.ListModelMixin,
 
     @swagger_auto_schema(responses=swagger.DatasetViewSet_create_response)
     def create(self, request, *args, **kwargs):
-        """Create a new dataset downloading it from URL or path
+        """Create a new dataset downloading it from URL or local path
 
         This API creates a dataset YAML file and stores it in the backend.
         The `path` field must contain the URL of a dataset, e.g. \
@@ -369,8 +369,8 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY,
                                              "Return the modelweights obtained on `model_id` model.",
-                                             type=openapi.TYPE_INTEGER, required=False)]
-    )
+                                             type=openapi.TYPE_INTEGER, required=False)],
+        responses=swagger.ModelWeightsViewSet_list_request)
     def list(self, request, *args, **kwargs):
         """Returns the available Neural Network models
 
@@ -379,6 +379,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         """
         return super().list(request, *args, **kwargs)
 
+    @swagger_auto_schema(responses=swagger.ModelWeightsViewSet_list_request)
     def retrieve(self, request, *args, **kwargs):
         """Retrieve a single modelweight
 
@@ -392,6 +393,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         except models.ModelWeights.DoesNotExist:
             return None
 
+    @swagger_auto_schema(request_body=swagger.ModelWeightsViewSet_update_request)
     def update(self, request, *args, **kwargs):
         """Update an existing weight
 

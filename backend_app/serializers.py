@@ -37,6 +37,7 @@ class PermissionSerializer(serializers.ModelSerializer):
 def check_users(users: List[Dict], field_name: str = 'users') -> None:
     """
     :param users: List of users and their permissions
+    :param field_name: Field name to return in errors
     """
     if not len(users):
         raise exceptions.ParseError({"Error": f"'{field_name}' list cannot be empty"})

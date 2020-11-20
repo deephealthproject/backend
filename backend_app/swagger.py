@@ -88,6 +88,52 @@ inferences_post_responses = {
                                     "error": "Non existing weights_id"
                                 }})
 }
+
+ModelWeightsViewSet_update_request = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    required=['name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users'],
+    properties={
+        'name': openapi.Schema(type=openapi.TYPE_STRING),
+        'model_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'dataset_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'pretrained_on': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'public': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+        'users': openapi.Schema(type=openapi.TYPE_ARRAY,
+                                items=openapi.Items(type=openapi.TYPE_OBJECT, properties={
+                                    'username': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'permission': openapi.Schema(type=openapi.TYPE_STRING),
+                                })),
+    },
+)
+
+ModelWeightsViewSet_list_retrieve_body = {
+    "id": 384,
+    "name": "Pneumothorax",
+    "model_id": 5,
+    "dataset_id": 152,
+    "pretrained_on": None,
+    "public": False,
+    "users": [
+        {
+            "username": "dhtest",
+            "permission": "OWN"
+        }
+    ]
+}
+ModelWeightsViewSet_list_request = {
+    '200': openapi.Response('Successful operation',
+                            serializers.ModelWeightsSerializer(many=True),
+                            examples={"application/json": [ModelWeightsViewSet_list_retrieve_body]}
+                            )
+}
+
+ModelWeightsViewSet_retrieve_request = {
+    '200': openapi.Response('Successful operation',
+                            serializers.ModelWeightsSerializer(),
+                            examples={"application/json": ModelWeightsViewSet_list_retrieve_body}
+                            )
+}
+
 ModelStatusView_get_response = {
     '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
         "application/json": {
@@ -95,6 +141,7 @@ ModelStatusView_get_response = {
         }
     })
 }
+
 OutputViewSet_get_responses = {
     '200': openapi.Response('response for classification', serializers.OutputsResponse, examples={
         "application/json": {
