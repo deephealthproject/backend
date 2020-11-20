@@ -46,7 +46,7 @@ class Dataset(models.Model):
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
     public = models.BooleanField(default=False)
 
-    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission')
 
     class Meta:
         indexes = [models.Index(fields=['is_single_image'])]
@@ -59,7 +59,7 @@ class Dataset(models.Model):
 class DatasetPermission(models.Model):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    permission = models.CharField(choices=Perm.choices, max_length=6, null=True, blank=True)  # Currently unused
+    permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
 
 class Inference(models.Model):
@@ -106,7 +106,7 @@ class ModelWeights(models.Model):
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     public = models.BooleanField(default=False)
 
-    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
 
     class Meta:
         # ordering = ['id']
@@ -119,7 +119,7 @@ class ModelWeights(models.Model):
 class ModelWeightsPermission(models.Model):
     modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    permission = models.CharField(choices=Perm.choices, max_length=6, null=True, blank=True)  # Currently unused
+    permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
 
 class Project(models.Model):
@@ -139,7 +139,7 @@ class Project(models.Model):
 class ProjectPermission(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    permission = models.CharField(choices=Perm.choices, max_length=6, default=Perm.VIEWER)
+    permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
 
 class Property(models.Model):

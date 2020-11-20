@@ -38,7 +38,7 @@ schema_view = get_schema_view(
         contact=openapi.Contact(email="michele.cancilla@unimore.it"),
         license=openapi.License(name="Apache 2.0", url='http://www.apache.org/licenses/LICENSE-2.0.html'),
     ),
-    url='https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/',
+    validators=['ssv'],
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
@@ -54,7 +54,7 @@ DatasetViewSet_create_response = {
                                     "name": "dataset-test",
                                     "path": "/mnt/data/backend/data/datasets/dataset-test.yml",
                                     "task_id": 2,
-                                    "owners": [
+                                    "users": [
                                         {"username": "dhtest"}
                                     ]
                                 }

@@ -349,22 +349,22 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           mixins.RetrieveModelMixin,
                           mixins.UpdateModelMixin,
                           viewsets.GenericViewSet):
-    queryset = models.ModelWeights.objects.filter(public=True)
+    queryset = models.ModelWeights.objects.all()  # filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
     params = ['model_id']
 
     def get_queryset(self):
-        if self.action == 'list':
+        if self.action in ['list']:
+            # Return public weights and the ones with own/view permission
             user = self.request.user
-
             model_id = self.request.query_params.get('model_id')
-            self.queryset = self.queryset.filter(model_id=model_id)
+            self.queryset = self.queryset.filter(model_id=model_id, public=True)
             q_perm = models.ModelWeights.objects.filter(
                 modelweightspermission__user=user, model_id=model_id, public=False)  # Get weights of current user
             self.queryset = self.queryset.union(q_perm).order_by('-id')
             return self.queryset
         else:
-            return super(ModelWeightsViewSet, self).get_queryset()
+            return super().get_queryset()
 
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY,
@@ -392,29 +392,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         except models.ModelWeights.DoesNotExist:
             return None
 
-    def put(self, request, *args, **kwargs):
-        """Update an existing weight
-
-        This method updates an existing model weight (e.g. change the name).
-        """
-        weight = self.get_obj(request.data['id'])
-        if not weight:
-            error = {"Error": f"Weight {request.data['id']} does not exist"}
-            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
-        serializer = self.serializer_class(weight, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            # Returns all the elements with model_id in request
-            queryset = models.ModelWeights.objects.filter(model_id=weight.model_id)
-            serializer = self.get_serializer(queryset, many=True)
-            # serializer = self.serializer_class(queryset, many=True)
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     def update(self, request, *args, **kwargs):
         """Update an existing weight
 
-        This method updates an existing model weight (e.g. change the name).
+        This method updates an existing model weight (e.g. change the name and permissions).
         """
         return super().update(request, *args, **kwargs)
 

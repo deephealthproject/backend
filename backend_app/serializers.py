@@ -6,23 +6,42 @@ from rest_framework.utils import model_meta
 from auth import serializers as auth_serializers
 from backend_app import models
 from rest_framework import exceptions
+from typing import List, Dict
 
 
 class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
+    """
+    Let to serialize M2M through models
+    """
+
     def __init__(self, method_name=None, **kwargs):
         super().__init__(**kwargs)
         kwargs['source'] = '*'
         self.read_only = False
+        self.required = True
 
     def to_internal_value(self, data):
         return {self.field_name: data}
 
 
-def check_users(users):
+class PermissionSerializer(serializers.ModelSerializer):
+    """
+    Base class which models a Permission class
+    """
+    username = serializers.CharField(source='user.username')
+
+    class Meta:
+        fields = ('username', 'permission')
+
+
+def check_users(users: List[Dict], field_name: str = 'users') -> None:
+    """
+    :param users: List of users and their permissions
+    """
     if not len(users):
-        raise exceptions.ParseError({"Error": f"'users' list cannot be empty"})
+        raise exceptions.ParseError({"Error": f"'{field_name}' list cannot be empty"})
     if not isinstance(users, list):
-        raise exceptions.ParseError({"Error": f"'users' must be a list of dictionaries"})
+        raise exceptions.ParseError({"Error": f"'{field_name}' must be a list of dictionaries"})
     for u in users:
         try:
             get_user_model().objects.get(username__exact=u.get('username'))
@@ -38,19 +57,19 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
 
 
 class DatasetSerializer(serializers.ModelSerializer):
-    owners = auth_serializers.UserSerializerNotUnique(many=True)
+    users = auth_serializers.UserSerializerNotUnique(many=True)
 
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name', 'path', 'task_id', 'owners', 'public']
+        fields = ['id', 'name', 'path', 'task_id', 'users', 'public']
         write_only_fields = ['name', 'path', 'task_id']  # Only for post
 
     def create(self, validated_data):
-        owners_data = validated_data.pop('owners')
+        users_data = validated_data.pop('users')
         dataset = models.Dataset.objects.create(**validated_data)
         perm = models.Perm.OWNER
-        for owner_data in owners_data:
-            user = get_user_model().objects.get(username__exact=owner_data.get('username'))
+        for user_data in users_data:
+            user = get_user_model().objects.get(username__exact=user_data.get('username'))
             _ = models.DatasetPermission.objects.get_or_create(user=user, dataset=dataset, permission=perm)
         return dataset
 
@@ -98,48 +117,62 @@ class ModelSerializer(serializers.ModelSerializer):
         return data
 
 
+class ModelWeightsPermissionSerializer(PermissionSerializer):
+    class Meta(PermissionSerializer.Meta):
+        model = models.ModelWeightsPermission
+
+
 class ModelWeightsSerializer(serializers.ModelSerializer):
-    owners = auth_serializers.UserSerializerNotUnique(many=True)
+    users = ReadWriteSerializerMethodField()
 
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'owners']
-        read_only_fields = ['location']
-        write_only_fields = ['id']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users']
 
-    def update(self, weight, validated_data):
-        info = model_meta.get_field_info(weight)
+    def get_users(self, obj):
+        qset = models.ModelWeightsPermission.objects.filter(modelweight=obj)
+        return [ModelWeightsPermissionSerializer(mws).data for mws in qset]
+
+    def update(self, instance, validated_data):
+        users = validated_data.pop('users')
+        check_users(users)
+
+        # Update existing attributes
+        info = model_meta.get_field_info(instance)
         for attr, value in validated_data.items():
             if attr not in info.relations or not info.relations[attr].to_many:
-                setattr(weight, attr, value)
-        weight.save()
+                setattr(instance, attr, value)
+        instance.save()
 
-        owners_data = validated_data.pop('owners')
+        current_user = self.context['request'].user
 
-        # Weights must belong to at least 1 user
-        if not len(owners_data):
-            raise serializers.ValidationError({"Error": f"Owners list cannot be empty"})
+        try:
+            current_user_perm = instance.modelweightspermission_set.get(user=current_user).permission
+        except instance.modelweightspermission_set.DoesNotExist:
+            # User has no permission on this object but can see it because it's public
+            current_user_perm = None
 
-        perm = models.Perm.OWNER
-        users = []
-        # Give permissions to new users
-        for owner_data in owners_data:
-            user = get_user_model().objects.get(username__exact=owner_data.get('username'))
-            users.append(user)
-            _ = models.ModelWeightsPermission.objects.get_or_create(user=user, modelweight=weight, permission=perm)
-        # Remove permissions to excluded users
-        for owner in weight.owners.all():
-            if owner not in users:
-                weight.owners.remove(owner)
-        return weight
+        if current_user_perm == models.Perm.VIEWER or current_user_perm is None:
+            # User has no rights. Abort
+            raise exceptions.PermissionDenied(
+                {"Error": f'User `{current_user}` does not have owner permission on this Weight'})
+
+        # Revoke permissions for every users
+        instance.users.clear()
+
+        # Add new permissions
+        for u in users:
+            user = get_user_model().objects.get(username__exact=u.get('username'))
+            perm = u.get('permission')
+            pp = models.ModelWeightsPermission.objects.get_or_create(user=user, modelweight=instance)[0]
+            pp.permission = perm
+            pp.save()
+        return instance
 
 
-class ProjectPermissionSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username')
-
-    class Meta:
+class ProjectPermissionSerializer(PermissionSerializer):
+    class Meta(PermissionSerializer.Meta):
         model = models.ProjectPermission
-        fields = ('username', 'permission')
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -166,6 +199,14 @@ class ProjectSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
         check_users(users)
+
+        # Update existing attributes
+        info = model_meta.get_field_info(instance)
+        for attr, value in validated_data.items():
+            if attr not in info.relations or not info.relations[attr].to_many:
+                setattr(instance, attr, value)
+        instance.save()
+
         current_user = self.context['request'].user
         current_user_perm = instance.projectpermission_set.get(user=current_user).permission
         if current_user_perm == models.Perm.VIEWER:
