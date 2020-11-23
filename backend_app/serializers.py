@@ -70,21 +70,35 @@ class DatasetPermissionSerializer(PermissionSerializer):
         model = models.DatasetPermission
 
 
-class DatasetSerializer(serializers.ModelSerializer):
+class M2MSerializer(serializers.ModelSerializer):
     users = ReadWriteSerializerMethodField()
+
+    def __init__(self, name, *args, **kwargs):
+        self.name_ = name
+        super(M2MSerializer, self).__init__(*args, **kwargs)
+
+    def get_users(self, obj):
+        m = eval('models.' + self.name_)
+        s = eval(self.name_ + 'Serializer')
+        field = [f.name for f in m._meta.fields if f.name not in ['user', 'id', 'permission']]
+        assert len(field) == 1
+        qset = m.objects.filter(**{field[0]: obj})
+        return [s(i).data for i in qset]
+
+    def validate(self, attrs):
+        check_users(attrs.get('users'))
+        return super().validate(attrs)
+
+
+class DatasetSerializer(M2MSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__('DatasetPermission', *args, **kwargs)
 
     class Meta:
         model = models.Dataset
         fields = ['id', 'name', 'path', 'task_id', 'users', 'public']
         write_only_fields = ['name', 'path', 'task_id']  # Only for post
-
-    def get_users(self, obj):
-        qset = models.DatasetPermission.objects.filter(dataset=obj)
-        return [DatasetPermissionSerializer(ds).data for ds in qset]
-
-    def validate(self, attrs):
-        check_users(attrs.get('users'))
-        return super().validate(attrs)
 
     def create(self, validated_data):
         users = validated_data.pop('users')
@@ -141,20 +155,14 @@ class ModelWeightsPermissionSerializer(PermissionSerializer):
         model = models.ModelWeightsPermission
 
 
-class ModelWeightsSerializer(serializers.ModelSerializer):
-    users = ReadWriteSerializerMethodField()
+class ModelWeightsSerializer(M2MSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__('ModelWeightsPermission', *args, **kwargs)
 
     class Meta:
         model = models.ModelWeights
         fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users']
-
-    def get_users(self, obj):
-        qset = models.ModelWeightsPermission.objects.filter(modelweight=obj)
-        return [ModelWeightsPermissionSerializer(mws).data for mws in qset]
-
-    def validate(self, attrs):
-        check_users(attrs.get('users'))
-        return super().validate(attrs)
 
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
@@ -197,20 +205,14 @@ class ProjectPermissionSerializer(PermissionSerializer):
         model = models.ProjectPermission
 
 
-class ProjectSerializer(serializers.ModelSerializer):
-    users = ReadWriteSerializerMethodField()
+class ProjectSerializer(M2MSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__('ProjectPermission', *args, **kwargs)
 
     class Meta:
         model = models.Project
         fields = ['id', 'name', 'task_id', 'users']
 
-    def get_users(self, obj):
-        qset = models.ProjectPermission.objects.filter(project=obj)
-        return [ProjectPermissionSerializer(pp).data for pp in qset]
-
-    def validate(self, attrs):
-        check_users(attrs.get('users'))
-        return super().validate(attrs)
 
     def create(self, validated_data):
         users = validated_data.pop('users')
@@ -223,7 +225,6 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
-
         # Update existing attributes
         info = model_meta.get_field_info(instance)
         for attr, value in validated_data.items():
