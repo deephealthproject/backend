@@ -1,5 +1,6 @@
 from django.contrib import admin
-
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth import get_user_model
 from backend_app import models
 
 
@@ -60,6 +61,13 @@ class TrainingAdmin(admin.ModelAdmin):
 class TrainingSettingAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.TrainingSetting._meta.fields]
 
+class CustomUserAdmin(UserAdmin):
+    ordering = ('date_joined', )
+    list_display = ('username', 'email', 'date_joined', 'first_name', 'last_name', 'is_staff')
+
+# Replace the default UserAdmin with CustomUserAdmin
+admin.site.unregister(get_user_model())
+admin.site.register(get_user_model(), CustomUserAdmin)
 
 admin.site.register(models.AllowedProperty, AllowedPropertyAdmin)
 admin.site.register(models.Dataset, DatasetAdmin)
