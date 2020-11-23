@@ -23,6 +23,17 @@ from backend_app import mixins as BAMixins, models, serializers, swagger
 from backend_app import utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
+from rest_framework import exceptions
+
+
+def check_permission(instance, user):
+    excp = exceptions.PermissionDenied({"Error": f"'{user}' has no permission to delete {str(instance)}"})
+    try:
+        instance_perm = instance.permission.get(user=user)
+    except ObjectDoesNotExist:
+        raise excp
+    if instance_perm.permission != models.Perm.OWNER:
+        raise excp
 
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
@@ -65,6 +76,7 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
 class DatasetViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
+                     mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
     queryset = models.Dataset.objects.filter(is_single_image=False, public=True)
     serializer_class = serializers.DatasetSerializer
@@ -73,7 +85,7 @@ class DatasetViewSet(mixins.ListModelMixin,
         user = self.request.user
         task_id = self.request.query_params.get('task_id')
         # Get datasets of current user
-        q_perm = models.Dataset.objects.filter(datasetpermission__user=user.id, public=False)
+        q_perm = models.Dataset.objects.filter(permission__user=user.id, public=False)
         if task_id:
             self.queryset = self.queryset.filter(task_id=task_id)
             q_perm = q_perm.filter(task_id=task_id)
@@ -140,6 +152,14 @@ class DatasetViewSet(mixins.ListModelMixin,
             # URL malformed
             return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a dataset
+
+        Delete a dataest by providing its `{id}`.
+        """
+        check_permission(instance=self.get_object(), user=request.user)
+        return super().destroy(request, *args, **kwargs)
 
 
 class InferenceViewSet(views.APIView):
@@ -348,6 +368,7 @@ class ModelViewSet(mixins.ListModelMixin,
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           mixins.RetrieveModelMixin,
                           mixins.UpdateModelMixin,
+                          mixins.DestroyModelMixin,
                           viewsets.GenericViewSet):
     queryset = models.ModelWeights.objects.all()  # filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
@@ -359,8 +380,8 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             user = self.request.user
             model_id = self.request.query_params.get('model_id')
             self.queryset = self.queryset.filter(model_id=model_id, public=True)
-            q_perm = models.ModelWeights.objects.filter(
-                modelweightspermission__user=user, model_id=model_id, public=False)  # Get weights of current user
+            # Get weights of current user
+            q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False)
             self.queryset = self.queryset.union(q_perm).order_by('-id')
             return self.queryset
         else:
@@ -404,6 +425,14 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
     @swagger_auto_schema(auto_schema=None)
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a weight
+
+        Delete a weight by providing its `{id}`.
+        """
+        check_permission(instance=self.get_object(), user=request.user)
+        return super().destroy(request, *args, **kwargs)
 
 
 class OutputViewSet(views.APIView):
@@ -461,6 +490,7 @@ class ProjectViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.CreateModelMixin,
                      mixins.UpdateModelMixin,
+                     mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
@@ -523,6 +553,14 @@ class ProjectViewSet(mixins.ListModelMixin,
     @swagger_auto_schema(auto_schema=None)
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a project
+
+        Delete a project by providing its `{id}`.
+        """
+        check_permission(instance=self.get_object(), user=request.user)
+        return super().destroy(request, *args, **kwargs)
 
 
 class PropertyViewSet(mixins.ListModelMixin,

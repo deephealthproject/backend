@@ -57,7 +57,7 @@ class Dataset(models.Model):
 
 
 class DatasetPermission(models.Model):
-    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name='permission')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
@@ -117,7 +117,7 @@ class ModelWeights(models.Model):
 
 
 class ModelWeightsPermission(models.Model):
-    modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE)
+    modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE, related_name='permission')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
@@ -137,7 +137,7 @@ class Project(models.Model):
 
 
 class ProjectPermission(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='permission')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 

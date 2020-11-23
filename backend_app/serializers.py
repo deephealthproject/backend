@@ -177,8 +177,8 @@ class ModelWeightsSerializer(M2MSerializer):
         current_user = self.context['request'].user
 
         try:
-            current_user_perm = instance.modelweightspermission_set.get(user=current_user).permission
-        except instance.modelweightspermission_set.DoesNotExist:
+            current_user_perm = instance.permission.get(user=current_user).permission
+        except instance.permission.DoesNotExist:
             # User has no permission on this object but can see it because it's public
             current_user_perm = None
 
@@ -233,7 +233,7 @@ class ProjectSerializer(M2MSerializer):
         instance.save()
 
         current_user = self.context['request'].user
-        current_user_perm = instance.projectpermission_set.get(user=current_user).permission
+        current_user_perm = instance.permission.get(user=current_user).permission
         if current_user_perm == models.Perm.VIEWER:
             # User has no rights. Abort
             raise exceptions.PermissionDenied(
