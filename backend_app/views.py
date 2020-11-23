@@ -108,7 +108,7 @@ class DatasetViewSet(mixins.ListModelMixin,
         """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            return Response({'error': 'Validation error. Request data is malformed.'},
+            return Response({**{'error': 'Validation error. Request data is malformed.'}, **serializer.errors},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Download the yml file in url
@@ -122,7 +122,7 @@ class DatasetViewSet(mixins.ListModelMixin,
             r = requests.get(url, allow_redirects=True)
             if r.status_code == 200:
                 yaml_content = yaml.load(r.content, Loader=yaml.FullLoader)
-                with open(f'{settings.DATASETS_DIR}/{dataset_name}.yml', 'w') as f:
+                with open(dataset_out_path, 'w') as f:
                     yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
 
                 # Update the path
@@ -455,11 +455,6 @@ class OutputViewSet(views.APIView):
             lines = [l.replace(settings.OUTPUTS_DIR, uri) for l in lines]
         response = {'outputs': lines}
         return Response(response, status=status.HTTP_200_OK)
-
-
-# class ProjectPermViewSetT(mixins.ListModelMixin, viewsets.GenericViewSet):
-#     queryset = models.ProjectPermission.objects.all()
-#     serializer_class = serializers.ProjectPermissionSerializer
 
 
 class ProjectViewSet(mixins.ListModelMixin,

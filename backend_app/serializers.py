@@ -35,19 +35,27 @@ class PermissionSerializer(serializers.ModelSerializer):
 
 
 def check_users(users: List[Dict], field_name: str = 'users') -> None:
-    """
+    """Check if user and permission have been sent correctly
+
     :param users: List of users and their permissions
     :param field_name: Field name to return in errors
     """
+    owners = 0
     if not len(users):
         raise exceptions.ParseError({"Error": f"'{field_name}' list cannot be empty"})
     if not isinstance(users, list):
         raise exceptions.ParseError({"Error": f"'{field_name}' must be a list of dictionaries"})
     for u in users:
         try:
+            if u.get('permission') is None:
+                raise exceptions.ParseError({"Error": f"'{field_name}' field must be always associated with its "
+                                                      f"permission level"})
+            if u.get('permission') == models.Perm.OWNER: owners += 1
             get_user_model().objects.get(username__exact=u.get('username'))
         except ObjectDoesNotExist:
             raise exceptions.ParseError({"Error": f"User `{u.get('username')}` does not exist"})
+    if not owners:
+        raise exceptions.ParseError({"Error": f"At least one user in '{field_name}' must be Owner"})
 
 
 class AllowedPropertySerializer(serializers.ModelSerializer):
@@ -57,25 +65,35 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
         # exclude = ['id']
 
 
+class DatasetPermissionSerializer(PermissionSerializer):
+    class Meta(PermissionSerializer.Meta):
+        model = models.DatasetPermission
+
+
 class DatasetSerializer(serializers.ModelSerializer):
-    users = auth_serializers.UserSerializerNotUnique(many=True)
+    users = ReadWriteSerializerMethodField()
 
     class Meta:
         model = models.Dataset
         fields = ['id', 'name', 'path', 'task_id', 'users', 'public']
         write_only_fields = ['name', 'path', 'task_id']  # Only for post
 
-    def create(self, validated_data):
-        users_data = validated_data.pop('users')
-        dataset = models.Dataset.objects.create(**validated_data)
-        perm = models.Perm.OWNER
-        for user_data in users_data:
-            user = get_user_model().objects.get(username__exact=user_data.get('username'))
-            _ = models.DatasetPermission.objects.get_or_create(user=user, dataset=dataset, permission=perm)
-        return dataset
+    def get_users(self, obj):
+        qset = models.DatasetPermission.objects.filter(dataset=obj)
+        return [DatasetPermissionSerializer(ds).data for ds in qset]
 
-    # def update(self, instance, validated_data):
-    #     pass
+    def validate(self, attrs):
+        check_users(attrs.get('users'))
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        users = validated_data.pop('users')
+        instance = models.Dataset.objects.create(**validated_data)
+        for u in users:
+            user = get_user_model().objects.get(username__exact=u.get('username'))
+            perm = u.get('permission')
+            _ = models.DatasetPermission.objects.get_or_create(user=user, dataset=instance, permission=perm)
+        return instance
 
 
 class InferenceSerializer(serializers.ModelSerializer):
@@ -134,9 +152,12 @@ class ModelWeightsSerializer(serializers.ModelSerializer):
         qset = models.ModelWeightsPermission.objects.filter(modelweight=obj)
         return [ModelWeightsPermissionSerializer(mws).data for mws in qset]
 
+    def validate(self, attrs):
+        check_users(attrs.get('users'))
+        return super().validate(attrs)
+
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
-        check_users(users)
 
         # Update existing attributes
         info = model_meta.get_field_info(instance)
@@ -187,9 +208,12 @@ class ProjectSerializer(serializers.ModelSerializer):
         qset = models.ProjectPermission.objects.filter(project=obj)
         return [ProjectPermissionSerializer(pp).data for pp in qset]
 
+    def validate(self, attrs):
+        check_users(attrs.get('users'))
+        return super().validate(attrs)
+
     def create(self, validated_data):
         users = validated_data.pop('users')
-        check_users(users)
         p = models.Project.objects.create(**validated_data)
         for u in users:
             user = get_user_model().objects.get(username__exact=u.get('username'))
@@ -199,7 +223,6 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
-        check_users(users)
 
         # Update existing attributes
         info = model_meta.get_field_info(instance)
