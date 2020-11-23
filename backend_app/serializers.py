@@ -280,7 +280,7 @@ class TaskSerializer(serializers.ModelSerializer):
 class TrainingSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Training
-        fields = ['id', 'celery_id', 'logfile', 'project_id', 'modelweights_id']
+        fields = ['id', 'celery_id', 'project_id', 'modelweights_id']
 
 
 class TrainSerializer(serializers.Serializer):

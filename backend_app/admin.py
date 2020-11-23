@@ -38,7 +38,7 @@ class ModelWeightsAdmin(admin.ModelAdmin):
 
 class ProjectPermission(admin.TabularInline):
     model = models.ProjectPermission
-    extra = 3
+    extra = 1
 
 
 class ProjectAdmin(admin.ModelAdmin):

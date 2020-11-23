@@ -26,8 +26,8 @@ from deeplearning.utils import nn_settings
 from rest_framework import exceptions
 
 
-def check_permission(instance, user):
-    excp = exceptions.PermissionDenied({"Error": f"'{user}' has no permission to delete {str(instance)}"})
+def check_permission(instance, user, operation):
+    excp = exceptions.PermissionDenied({"Error": f"'{user}' has no permission to {operation} {str(instance)}"})
     try:
         instance_perm = instance.permission.get(user=user)
     except ObjectDoesNotExist:
@@ -158,7 +158,7 @@ class DatasetViewSet(mixins.ListModelMixin,
 
         Delete a dataest by providing its `{id}`.
         """
-        check_permission(instance=self.get_object(), user=request.user)
+        check_permission(instance=self.get_object(), user=request.user, operation='delete')
         return super().destroy(request, *args, **kwargs)
 
 
@@ -431,7 +431,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
 
         Delete a weight by providing its `{id}`.
         """
-        check_permission(instance=self.get_object(), user=request.user)
+        check_permission(instance=self.get_object(), user=request.user, operation='delete')
         return super().destroy(request, *args, **kwargs)
 
 
@@ -559,7 +559,7 @@ class ProjectViewSet(mixins.ListModelMixin,
 
         Delete a project by providing its `{id}`.
         """
-        check_permission(instance=self.get_object(), user=request.user)
+        check_permission(instance=self.get_object(), user=request.user, operation='delete')
         return super().destroy(request, *args, **kwargs)
 
 
@@ -843,6 +843,35 @@ class TrainViewSet(views.APIView):
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TrainingsViewSet(BAMixins.ParamListModelMixin,
+                       # mixins.RetrieveModelMixin,
+                       # mixins.CreateModelMixin,
+                       # mixins.UpdateModelMixin,
+                       # mixins.DestroyModelMixin,
+                       viewsets.GenericViewSet):
+    queryset = models.Training.objects.all()
+    serializer_class = serializers.TrainingSerializer
+    params = ['project_id']
+
+    def get_queryset(self):
+        project_id = self.request.query_params.get('project_id')
+        if not models.ProjectPermission.objects.filter(user=self.request.user, project=project_id).exists():
+            self.queryset = None
+        else:
+            self.queryset = self.queryset.filter(project_id=project_id)
+        return self.queryset
+
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
+                                             required=True, type=openapi.TYPE_INTEGER)])
+    def list(self, request, *args, **kwargs):
+        """Returns past training processes
+
+        This API returns past trainings performed within the `project_id` project.
+        """
+        return super().list(request, *args, **kwargs)
 
 
 class TrainingSettingViewSet(BAMixins.ParamListModelMixin,

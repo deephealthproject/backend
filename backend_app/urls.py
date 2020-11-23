@@ -17,6 +17,7 @@ router.register(r'models', views.ModelViewSet)
 router.register(r'projects', views.ProjectViewSet)
 router.register(r'properties', views.PropertyViewSet)
 router.register(r'tasks', views.TaskViewSet)
+router.register(r'trainings', views.TrainingsViewSet)
 router.register(r'trainingSettings', views.TrainingSettingViewSet)
 router.register(r'weights', views.ModelWeightsViewSet)
 
