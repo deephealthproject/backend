@@ -4,7 +4,6 @@ import uuid
 
 import numpy as np
 import yaml
-from drf_extra_fields.fields import Base64ImageField
 from rest_framework import status
 from rest_framework.response import Response
 

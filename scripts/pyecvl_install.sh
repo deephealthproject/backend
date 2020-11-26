@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set PyECVL default version
-PYECVL_TAG="${1:-0.5.1}"
+PYECVL_TAG="${1:-0.5.2}"
 
 # PyECVL cloning
 echo "Cloning PyECVL"
@@ -35,7 +35,7 @@ cd "$PYECVL_ROOT"/third_party/ecvl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DECVL_WITH_DICOM=ON \
   -DECVL_WITH_OPENSLIDE=ON -DECVL_DATASET=ON -DECVL_BUILD_EDDL=ON \
-  -Deddl_DIR="$EDDL_DIR/lib/cmake/eddl" ..
+  -DECVL_TESTS=OFF -Deddl_DIR="$EDDL_DIR/lib/cmake/eddl" ..
 cmake --build . --config Release --parallel "$(nproc)"
 cmake --build . --target install
 export ECVL_DIR=$(pwd)/install
