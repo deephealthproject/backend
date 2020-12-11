@@ -55,7 +55,7 @@ DatasetViewSet_create_response = {
                                     "path": "/mnt/data/backend/data/datasets/dataset-test.yml",
                                     "task_id": 2,
                                     "users": [
-                                        {"username": "dhtest"}
+                                        {"username": "dhtest", "permission": "OWN"}
                                     ]
                                 }
                             }),
@@ -71,8 +71,7 @@ DatasetViewSet_create_response = {
 
 inferences_post_responses = {
     '200': openapi.Response(
-        'On a successful operation, it returns the `process_id`, used for polling the '
-        'operation status.',
+        'On a successful operation, it returns the `process_id`, used for polling the operation status.',
         serializers.InferenceResponseSerializer,
         examples={
             "application/json": {
@@ -88,6 +87,30 @@ inferences_post_responses = {
                                     "error": "Non existing weights_id"
                                 }})
 }
+ModelViewSet_create_response = {
+    '200': openapi.Response(
+        'On a successful operation, it returns the `process_id`, used for polling the operation status.',
+        serializers.InferenceResponseSerializer,
+        examples={
+            "application/json": {
+                "result": "ok",
+                "process_id": "62a10034-1f2f-44b9-9014-71a1992647be"
+            }
+        }),
+}
+
+ModelViewSet_create_request = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    required=['name', 'task_id'],
+    properties={
+        'name': openapi.Schema(type=openapi.TYPE_STRING),
+        'task_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'dataset_id': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                     description="If given the current model has been already trained on that dataset."),
+        'onnx_url': openapi.Schema(type=openapi.TYPE_STRING, pattern="https://*", description="ONNX file URL"),
+        'onnx_data': openapi.Schema(type=openapi.TYPE_STRING, description="form-data submitted"),
+    },
+)
 
 ModelWeightsViewSet_update_request = openapi.Schema(
     type=openapi.TYPE_OBJECT,
@@ -137,7 +160,8 @@ ModelWeightsViewSet_retrieve_request = {
 ModelStatusView_get_response = {
     '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
         "application/json": {
-            "result": "SUCCESS"
+            "result": "SUCCESS",
+            'process_type': 'Model uploading'
         }
     })
 }

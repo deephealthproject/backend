@@ -71,7 +71,8 @@ class UsersViewSet(mixins.ListModelMixin,
         return super().retrieve(request, *args, **kwargs)
 
 
-class ChangePasswordView(generics.UpdateAPIView):
+class ChangePasswordView(mixins.UpdateModelMixin,
+                         generics.GenericAPIView):
     model = get_user_model()
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = serializers.ChangePasswordSerializer

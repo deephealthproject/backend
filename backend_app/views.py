@@ -27,7 +27,7 @@ from rest_framework import exceptions
 
 
 def check_permission(instance, user, operation):
-    excp = exceptions.PermissionDenied({"Error": f"'{user}' has no permission to {operation} {str(instance)}"})
+    excp = exceptions.PermissionDenied({'Error': f"'{user}' has no permission to {operation} {str(instance)}"})
     try:
         instance_perm = instance.permission.get(user=user)
     except ObjectDoesNotExist:
@@ -279,10 +279,14 @@ class ModelStatusViewSet(views.APIView):
         model = models.Model.objects.filter(celery_id=process_id)
         if not model:
             # already deleted model
-            return Response({"result": "Process stopped before finishing or non existing."},
+            return Response({'result': 'Process stopped before finishing or non existing.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        return Response({"result": AsyncResult(process_id).status}, status=status.HTTP_200_OK)
+        response = serializers.ModelStatusResponse({
+            'result': AsyncResult(process_id).status,
+            'process_type': 'Model uploading'
+        })
+        return Response(response.data, status=status.HTTP_200_OK)
 
 
 class ModelViewSet(mixins.ListModelMixin,
@@ -312,9 +316,14 @@ class ModelViewSet(mixins.ListModelMixin,
         """
         return super().list(request)
 
+    @swagger_auto_schema(request_body=swagger.ModelViewSet_create_request,
+                         responses=swagger.ModelViewSet_create_response)
     def create(self, request, *args, **kwargs):
-        """TODO docs
+        """Create a new model
 
+        This API creates a new model which is defined through a ONNX file.
+        The ONNX can be uploaded using the `onnx_data` body field or can be retrieved by the backend providing the \
+        `onnx_url` field.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():

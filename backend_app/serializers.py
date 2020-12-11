@@ -91,7 +91,6 @@ class M2MSerializer(serializers.ModelSerializer):
 
 
 class DatasetSerializer(M2MSerializer):
-
     def __init__(self, *args, **kwargs):
         super().__init__('DatasetPermission', *args, **kwargs)
 
@@ -141,8 +140,9 @@ class ModelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Model
-        fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id']
+        fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id', 'celery_id']
         write_only_fields = ['onnx_url', 'onnx_data', 'dataset_id']
+        read_only_fields = ['celery_id']
 
     def validate(self, data):
         if not data.get('onnx_url') and not data.get('onnx_data'):
@@ -340,3 +340,4 @@ class StatusResponse(serializers.Serializer):
 
 class ModelStatusResponse(serializers.Serializer):
     result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS"])
+    process_type = serializers.CharField()
