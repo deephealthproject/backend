@@ -7,7 +7,7 @@ django-filter  # drf: Filtering support
 pyyaml         # drf: Generate OpenAPI
 uritemplate    # drf: Generate OpenAPI
 django-cors-headers # drf: enables CORS
-celery<5  # Runs training processes
+celery==5.0.2  # Runs training processes
 sqlalchemy  # Required by celery
 requests
 psycopg2-binary # Allow to connect to PostgreSQL database
@@ -20,5 +20,5 @@ django-rest-framework-social-oauth2
 
 # PyEDDL/PyECVL requirements
 numpy
-pybind11
+pybind11<2.6  # because of https://github.com/deephealthproject/pyecvl/issues/45
 pytest

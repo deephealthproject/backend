@@ -202,11 +202,12 @@ CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = env('RABBITMQ_BROKER_URL')
 
-#: Only add pickle to this list if your broker is secured
-#: from unwanted access (see userguide/security.html)
-CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
-CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER')
+# Only add pickle to this list if your broker is secured
+# from unwanted access (see userguide/security.html)
+accept_content = env.list('CELERY_ACCEPT_CONTENT')
+result_backend = env('CELERY_RESULT_BACKEND')
+task_serializer = env('CELERY_TASK_SERIALIZER')
+
 
 SOCIAL_AUTH_USER_FIELDS = ['email', 'username']
 SOCIAL_AUTH_GITHUB_KEY = env('SOCIAL_AUTH_GITHUB_KEY')
