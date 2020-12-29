@@ -29,7 +29,7 @@ Generate a new SECRET_KEY with:
 python -c 'from django.core.management.utils import get_random_secret_key;print(get_random_secret_key())'
 ```
 
-Edit the `~/config` file to configure the application (SECRET_KEY, DB and RabbitMQ connection and other optional Django settings).
+Edit the `config` file to configure the application (SECRET_KEY, DB and RabbitMQ connection and other optional Django settings).
 
 ##### Celery
 Install with: `sudo apt install rabbitmq-server` 

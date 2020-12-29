@@ -28,26 +28,5 @@
       "celery_id": null,
       "task_id": 2
     }
-  },
-
-    {
-    "model": "backend_app.model",
-    "pk": 5,
-    "fields": {
-      "name": "VGG16_isic",
-      "location": "%MODELS_PATH%/pretrained/vgg16_in224_isic.onnx",
-      "celery_id": null,
-      "task_id": 1
-    }
-  },
-  {
-    "model": "backend_app.model",
-    "pk": 6,
-    "fields": {
-      "name": "SegNet_Pneumothorax",
-      "location": "%MODELS_PATH%/pretrained/SegNet_Pneumothorax.onnx",
-      "celery_id": null,
-      "task_id": 2
-    }
   }
 ]
