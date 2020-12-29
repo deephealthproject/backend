@@ -116,3 +116,27 @@ def inference_settings(inference_id, hyperparams, dataset_id=None):
         return False
 
     return config
+
+
+class Logger:
+    def __init__(self, filename=None, filemode='w'):
+        self.file = None
+        if filename:
+            self.file = open(filename, filemode)
+
+    def open(self, filename=None, filemode='w'):
+        self.file = open(filename, filemode)
+
+    def close(self):
+        self.file.close()
+
+    def log(self, message, end='\n'):
+        assert self.file is not None
+        print(message, end=end, file=self.file, flush=True)
+
+    def print(self, message, end='\n'):
+        print(message, end=end, flush=True)
+
+    def print_log(self, message, end='\n'):
+        self.print(message, end=end)
+        self.log(message, end=end)
