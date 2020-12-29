@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set PyECVL default version
-PYECVL_TAG="${1:-0.5.2}"
+PYECVL_TAG="${1:-0.7.0}"
 
 # PyECVL cloning
 echo "Cloning PyECVL"
@@ -20,7 +20,7 @@ PYEDDL_ROOT=$(pwd)
 cd third_party/eddl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON -DBUILD_PROTOBUF=ON \
-  -DBUILD_TARGET=GPU -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF ..
+  -DBUILD_TARGET=GPU -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF ..
 cmake --build . --config Release --parallel "$(nproc)"
 cmake --build . --target install
 export EDDL_WITH_CUDA="true"
