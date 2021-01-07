@@ -1,12 +1,17 @@
-from rest_framework import mixins, status, views, viewsets, generics
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
+from django.core.mail import EmailMultiAlternatives
+from django.dispatch import receiver
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django_rest_passwordreset.signals import reset_password_token_created
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import permissions, views
+from rest_framework import generics, mixins, permissions, status, views, viewsets
 from rest_framework.response import Response
 
-from django.contrib.auth import get_user_model
 from auth import serializers, swagger
+from backend import settings
 
 
 # Test API
@@ -138,3 +143,45 @@ class UserView(generics.CreateAPIView,
         This method updates the user information.
         """
         return super().put(request, *args, **kwargs)
+
+
+@receiver(reset_password_token_created)
+def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
+    """
+    Handles password reset tokens
+    When a token is created, an e-mail needs to be sent to the user
+    :param sender: View Class that sent the signal
+    :param instance: View Instance that sent the signal
+    :param reset_password_token: Token Model Object
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    # send an e-mail to the user
+    context = {
+        'current_user': reset_password_token.user,
+        'username': reset_password_token.user.username,
+        'email': reset_password_token.user.email,
+        'token': reset_password_token.key,
+        'reset_password_url': "{}?token={}".format(
+            instance.request.build_absolute_uri(reverse('password_reset:reset-password-confirm')),
+            reset_password_token.key),
+        'reset_password_confirm_url': instance.request.build_absolute_uri('confirm'),
+    }
+
+    # render email text
+    email_html_message = render_to_string('email/user_reset_password.html', context)
+    email_plaintext_message = render_to_string('email/user_reset_password.txt', context)
+
+    msg = EmailMultiAlternatives(
+        # title:
+        "Password Reset for {title}".format(title="DeepHealth Backend"),
+        # message:
+        email_plaintext_message,
+        # from:
+        settings.EMAIL_HOST,
+        # to:
+        [reset_password_token.user.email]
+    )
+    msg.attach_alternative(email_html_message, "text/html")
+    msg.send()

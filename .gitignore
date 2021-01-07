@@ -1,6 +1,6 @@
 # Project files
 venv/
-config
+config*
 *.sqlite*
 
 # Created by .ignore support plugin (hsz.mobi)

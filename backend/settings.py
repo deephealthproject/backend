@@ -23,7 +23,7 @@ env = environ.Env(
     EDDL_WITH_CUDA=(bool, False),
 )
 
-env_path = os.environ.get("DJANGO_ENV", os.path.join(BASE_DIR, "config"))
+env_path = os.environ.get("ENV_PATH", os.path.join(BASE_DIR, "config"))
 env.read_env(env_path)  # reading .env file
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'social_django',
     'rest_framework_social_oauth2',
+    'django_rest_passwordreset',
 ]
 
 MIDDLEWARE = [
@@ -119,8 +120,7 @@ SOCIAL_AUTH_PIPELINE = (
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -208,8 +208,14 @@ accept_content = env.list('CELERY_ACCEPT_CONTENT')
 result_backend = env('CELERY_RESULT_BACKEND')
 task_serializer = env('CELERY_TASK_SERIALIZER')
 
-
 SOCIAL_AUTH_USER_FIELDS = ['email', 'username']
 SOCIAL_AUTH_GITHUB_KEY = env('SOCIAL_AUTH_GITHUB_KEY')
 SOCIAL_AUTH_GITHUB_SECRET = env('SOCIAL_AUTH_GITHUB_SECRET')
 SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')

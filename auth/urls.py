@@ -21,6 +21,8 @@ urlpatterns = [
     path('user/', views.UserView.as_view(), name='user'),
     path('users/', user_list, name='user-list'),
     path('users/<int:pk>/', user_detail, name='user-detail'),
+    path('password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+
     # Test views
     path('testUser/', views.TestAuthAPI.as_view(), name='testUser'),
 ]
