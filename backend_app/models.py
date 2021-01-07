@@ -6,6 +6,8 @@ from django.db.models.signals import pre_delete
 
 from django.dispatch import receiver
 from django.conf import settings
+from django.db.models import Q
+from django.db.models.constraints import UniqueConstraint
 
 
 class Perm(models.TextChoices):
@@ -25,13 +27,19 @@ class AllowedProperty(models.Model):
     """
     property_id = models.ForeignKey('Property', on_delete=models.PROTECT)
     model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
+    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
 
     allowed_value = models.CharField(max_length=200, null=True, blank=True)
     default_value = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
+        constraints = [
+            UniqueConstraint(fields=['property_id', 'model_id', 'dataset_id'],
+                             name='unique_with_optional'),
+            UniqueConstraint(fields=['property_id', 'model_id'], condition=Q(dataset_id=None),
+                             name='unique_without_optional'),
+        ]
         ordering = ['model_id']
-        unique_together = ["model_id", "property_id"]
         verbose_name_plural = "Allowed properties"
 
     def __str__(self):
@@ -109,7 +117,7 @@ class ModelWeights(models.Model):
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
 
     class Meta:
-        # ordering = ['id']
+        ordering = ['id']
         verbose_name_plural = "Model Weights"
 
     def __str__(self):

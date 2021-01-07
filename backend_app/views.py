@@ -10,7 +10,6 @@ import requests
 import yaml
 from celery import shared_task
 from celery.result import AsyncResult
-from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from drf_yasg import openapi
@@ -46,14 +45,18 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
     def get_queryset(self):
         model_id = self.request.query_params.get('model_id')
         property_id = self.request.query_params.get('property_id')
-        self.queryset = models.AllowedProperty.objects.filter(model_id=model_id, property_id=property_id)
+        dataset_id = self.request.query_params.get('dataset_id')
+        self.queryset = models.AllowedProperty.objects.filter(model_id=model_id, property_id=property_id,
+                                                              dataset_id=dataset_id)
         return self.queryset
 
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY, "Integer representing a model",
                                              required=True, type=openapi.TYPE_INTEGER),
                            openapi.Parameter('property_id', openapi.IN_QUERY, "Integer representing a property",
-                                             required=True, type=openapi.TYPE_INTEGER)]
+                                             required=True, type=openapi.TYPE_INTEGER),
+                           openapi.Parameter('dataset_id', openapi.IN_QUERY, "Integer representing a dataset",
+                                             required=False, type=openapi.TYPE_INTEGER)]
     )
     def list(self, request, *args, **kwargs):
         """Return the allowed and default values of a property
@@ -66,9 +69,9 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
         return super().list(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
-        """Create a new AllowedProperty
+        """Create new allowed and default values of a property
 
-         This method create a new AllowedProperty
+        This method create a new AllowedProperty for a Property and Model and Dataset.
         """
         return super().create(request, *args, **kwargs)
 
@@ -324,6 +327,8 @@ class ModelViewSet(mixins.ListModelMixin,
         This API creates a new model which is defined through a ONNX file.
         The ONNX can be uploaded using the `onnx_data` body field or can be retrieved by the backend providing the \
         `onnx_url` field.
+        The `dataset_id` parameter indicates that the model has been already trained on a certain dataset. The backend \
+        will then create a new ModelWeight instance for these Model and Dataset.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -438,9 +443,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
     def destroy(self, request, *args, **kwargs):
         """Delete a weight
 
-        Delete a weight by providing its `{id}`.
+        Delete a weight and its ONNX file.
         """
         check_permission(instance=self.get_object(), user=request.user, operation='delete')
+        # TODO Delete onnx file too
         return super().destroy(request, *args, **kwargs)
 
 
@@ -556,6 +562,8 @@ class ProjectViewSet(mixins.ListModelMixin,
         """Update an existing project
 
         Update a project instance by providing its `{id}`.
+        The new list of users replace the old one, so removing a user from the user list will remove that user's
+        permissions.
         """
         return super().update(request, *args, **kwargs)
 
@@ -797,6 +805,12 @@ class TrainViewSet(views.APIView):
 
             # Check if current model has some custom properties and load them
             props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id)
+            if props_allowed:
+                for p in props_allowed:
+                    hyperparams[p.property_id.name] = p.default_value
+            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id,
+                                                                  dataset_id=weight.dataset_id)
+            # Override with allowedproperties specific for the dataset
             if props_allowed:
                 for p in props_allowed:
                     hyperparams[p.property_id.name] = p.default_value

@@ -62,7 +62,6 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.AllowedProperty
         fields = '__all__'
-        # exclude = ['id']
 
 
 class DatasetPermissionSerializer(PermissionSerializer):
@@ -212,7 +211,6 @@ class ProjectSerializer(M2MSerializer):
     class Meta:
         model = models.Project
         fields = ['id', 'name', 'task_id', 'users']
-
 
     def create(self, validated_data):
         users = validated_data.pop('users')
