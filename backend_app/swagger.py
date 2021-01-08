@@ -310,3 +310,18 @@ TrainViewSet_post_response = {
                                 }
                             })
 }
+
+Inference_get_response = {
+    '200': openapi.Response('List of inference',
+                            serializers.InferenceSerializer(many=True),
+                            examples={
+                                "application/json": [
+                                    {
+                                        "project_id": 1,
+                                        "modelweights_id": 1,
+                                        "dataset_id": 1,
+                                        "celery_id": "ecd0bebd-b134-4690-8bc7-3d22efab6324"
+                                    }
+                                ]
+                            })
+}

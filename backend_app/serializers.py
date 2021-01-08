@@ -109,12 +109,10 @@ class DatasetSerializer(M2MSerializer):
 
 
 class InferenceSerializer(serializers.ModelSerializer):
-    project_id = serializers.IntegerField()
-
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'dataset_id']
-        # exclude = ['stats']
+        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id']
+        read_only_fields = ['celery_id', 'logfile', 'outputfile', 'stats']
 
 
 class InferenceSingleSerializer(serializers.ModelSerializer):

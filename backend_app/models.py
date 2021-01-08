@@ -81,9 +81,11 @@ class Inference(models.Model):
     logfile = models.CharField(max_length=2048, null=True, blank=True)
     outputfile = models.CharField(max_length=2048, null=True, blank=True)
 
+    project_id = models.ForeignKey('Project', on_delete=models.CASCADE)
+
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
-        # ordering = ['id']
+        ordering = ['id']
 
     def __str__(self):
         return f'{self.modelweights_id.name} - {self.dataset_id.name}'

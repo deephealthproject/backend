@@ -14,15 +14,13 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import mixins, status, views, viewsets
+from rest_framework import exceptions, mixins, status, views, viewsets
 from rest_framework.response import Response
 
 from backend import celery_app, settings
-from backend_app import mixins as BAMixins, models, serializers, swagger
-from backend_app import utils
+from backend_app import mixins as BAMixins, models, serializers, swagger, utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import nn_settings
-from rest_framework import exceptions
 
 
 def check_permission(instance, user, operation):
@@ -165,6 +163,20 @@ class DatasetViewSet(mixins.ListModelMixin,
         return super().destroy(request, *args, **kwargs)
 
 
+def inference_get(request):
+    if not request.query_params.get('project_id'):
+        error = {'Error': f'Missing required parameter `project_id`'}
+        return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+    project_id = request.query_params.get('project_id')
+    if not models.ProjectPermission.objects.filter(user=request.user, project_id=project_id).exists():
+        raise exceptions.PermissionDenied(
+            {'Error': f"'{request.user}' has no permission to view Project {project_id}"})
+    else:
+        queryset = models.Inference.objects.filter(project_id=project_id)
+    serializer = serializers.InferenceSerializer(queryset, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class InferenceViewSet(views.APIView):
     @swagger_auto_schema(request_body=serializers.InferenceSerializer,
                          responses=swagger.inferences_post_responses)
@@ -179,6 +191,19 @@ class InferenceViewSet(views.APIView):
         if serializer.is_valid():
             return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY,
+                                                              "Id representing a project",
+                                                              required=True, type=openapi.TYPE_INTEGER)],
+                         responses=swagger.Inference_get_response
+                         )
+    def get(self, request):
+        """Return all the inferences made within a project
+
+        This API returns all the inferences performed by users within a project.
+        The `project_id` parameter is mandatory.
+        """
+        return inference_get(request)
 
 
 class InferenceSingleViewSet(views.APIView):
@@ -248,6 +273,19 @@ class InferenceSingleViewSet(views.APIView):
             serializer.validated_data['dataset_id'] = d
             return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY,
+                                                              "Id representing a project",
+                                                              required=True, type=openapi.TYPE_INTEGER)],
+                         responses=swagger.Inference_get_response
+                         )
+    def get(self, request):
+        """Return all the inferenceSingle made within a project
+
+        This API returns all the inferences performed by users within a project.
+        The `project_id` parameter is mandatory.
+        """
+        return inference_get(request)
 
 
 @shared_task
@@ -714,6 +752,13 @@ class TaskViewSet(mixins.ListModelMixin,
     queryset = models.Task.objects.all()
     serializer_class = serializers.TaskSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        """Provide information about a task
+
+        Provide information about a task.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
     def list(self, request, *args, **kwargs):
         """Return the tasks supported by backend
 
@@ -869,10 +914,6 @@ class TrainViewSet(views.APIView):
 
 
 class TrainingsViewSet(BAMixins.ParamListModelMixin,
-                       # mixins.RetrieveModelMixin,
-                       # mixins.CreateModelMixin,
-                       # mixins.UpdateModelMixin,
-                       # mixins.DestroyModelMixin,
                        viewsets.GenericViewSet):
     queryset = models.Training.objects.all()
     serializer_class = serializers.TrainingSerializer
@@ -881,7 +922,8 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
     def get_queryset(self):
         project_id = self.request.query_params.get('project_id')
         if not models.ProjectPermission.objects.filter(user=self.request.user, project=project_id).exists():
-            self.queryset = None
+            raise exceptions.PermissionDenied(
+                {'Error': f"'{self.request.user}' has no permission to view Project {project_id}"})
         else:
             self.queryset = self.queryset.filter(project_id=project_id)
         return self.queryset
