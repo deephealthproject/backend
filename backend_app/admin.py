@@ -1,11 +1,16 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin
+
 from backend_app import models
 
 
 class AllowedPropertyAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.AllowedProperty._meta.fields]
+
+
+class DatasetPermissionPlain(admin.ModelAdmin):
+    list_display = [f.name for f in models.DatasetPermission._meta.fields]
 
 
 class DatasetPermission(admin.TabularInline):
@@ -26,6 +31,10 @@ class ModelAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.Model._meta.fields]
 
 
+class ModelWeightsPermissionPlain(admin.ModelAdmin):
+    list_display = [f.name for f in models.ModelWeightsPermission._meta.fields]
+
+
 class ModelWeightsPermission(admin.TabularInline):
     model = models.ModelWeightsPermission
     extra = 1
@@ -34,6 +43,10 @@ class ModelWeightsPermission(admin.TabularInline):
 class ModelWeightsAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.ModelWeights._meta.fields]
     inlines = (ModelWeightsPermission,)
+
+
+class ProjectPermissionPlain(admin.ModelAdmin):
+    list_display = [f.name for f in models.ProjectPermission._meta.fields]
 
 
 class ProjectPermission(admin.TabularInline):
@@ -61,9 +74,11 @@ class TrainingAdmin(admin.ModelAdmin):
 class TrainingSettingAdmin(admin.ModelAdmin):
     list_display = [f.name for f in models.TrainingSetting._meta.fields]
 
+
 class CustomUserAdmin(UserAdmin):
-    ordering = ('date_joined', )
+    ordering = ('date_joined',)
     list_display = ('username', 'email', 'date_joined', 'first_name', 'last_name', 'is_staff')
+
 
 # Replace the default UserAdmin with CustomUserAdmin
 admin.site.unregister(get_user_model())
@@ -71,9 +86,12 @@ admin.site.register(get_user_model(), CustomUserAdmin)
 
 admin.site.register(models.AllowedProperty, AllowedPropertyAdmin)
 admin.site.register(models.Dataset, DatasetAdmin)
+admin.site.register(models.DatasetPermission, DatasetPermissionPlain)
 admin.site.register(models.Inference, InferenceAdmin)
 admin.site.register(models.Model, ModelAdmin)
+admin.site.register(models.ModelWeightsPermission, ModelWeightsPermissionPlain)
 admin.site.register(models.ModelWeights, ModelWeightsAdmin)
+admin.site.register(models.ProjectPermission, ProjectPermissionPlain)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.Property, PropertyAdmin)
 admin.site.register(models.Task, TaskAdmin)
