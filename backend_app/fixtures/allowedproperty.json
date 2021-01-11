@@ -5,6 +5,7 @@
     "fields": {
       "property_id": 1,
       "model_id": 1,
+      "dataset_id": null,
       "allowed_value": null,
       "default_value": "0.0001"
     }
@@ -15,6 +16,7 @@
     "fields": {
       "property_id": 2,
       "model_id": 1,
+      "dataset_id": null,
       "allowed_value": "CrossEntropy,MSE",
       "default_value": "CrossEntropy"
     }
@@ -25,6 +27,7 @@
     "fields": {
       "property_id": 4,
       "model_id": 1,
+      "dataset_id": null,
       "allowed_value": null,
       "default_value": "64"
     }
@@ -35,6 +38,7 @@
     "fields": {
       "property_id": 5,
       "model_id": 1,
+      "dataset_id": null,
       "allowed_value": "CategoricalAccuracy",
       "default_value": "CategoricalAccuracy"
     }
@@ -44,9 +48,10 @@
     "pk": 5,
     "fields": {
       "property_id": 6,
-      "model_id": 3,
+      "model_id": 1,
+      "dataset_id": 1,
       "allowed_value": null,
-      "default_value": "192"
+      "default_value": "28"
     }
   },
   {
@@ -54,9 +59,10 @@
     "pk": 6,
     "fields": {
       "property_id": 7,
-      "model_id": 3,
+      "model_id": 1,
+      "dataset_id": 1,
       "allowed_value": null,
-      "default_value": "192"
+      "default_value": "28"
     }
   },
   {
@@ -65,8 +71,185 @@
     "fields": {
       "property_id": 3,
       "model_id": 1,
+      "dataset_id": null,
       "allowed_value": null,
       "default_value": "3"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 8,
+    "fields": {
+      "property_id": 1,
+      "model_id": 2,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "0.0001"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 9,
+    "fields": {
+      "property_id": 2,
+      "model_id": 2,
+      "dataset_id": null,
+      "allowed_value": "CrossEntropy,MSE",
+      "default_value": "CrossEntropy"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 10,
+    "fields": {
+      "property_id": 4,
+      "model_id": 2,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "4"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 11,
+    "fields": {
+      "property_id": 5,
+      "model_id": 2,
+      "dataset_id": null,
+      "allowed_value": "CategoricalAccuracy",
+      "default_value": "CategoricalAccuracy"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 12,
+    "fields": {
+      "property_id": 6,
+      "model_id": 2,
+      "dataset_id": 3,
+      "allowed_value": null,
+      "default_value": "224"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 13,
+    "fields": {
+      "property_id": 7,
+      "model_id": 2,
+      "dataset_id": 3,
+      "allowed_value": null,
+      "default_value": "224"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 14,
+    "fields": {
+      "property_id": 3,
+      "model_id": 2,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "3"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 15,
+    "fields": {
+      "property_id": 1,
+      "model_id": 3,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "0.001"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 16,
+    "fields": {
+      "property_id": 2,
+      "model_id": 3,
+      "dataset_id": null,
+      "allowed_value": "CrossEntropy,MSE",
+      "default_value": "MSE"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 17,
+    "fields": {
+      "property_id": 4,
+      "model_id": 3,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "4"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 18,
+    "fields": {
+      "property_id": 5,
+      "model_id": 3,
+      "dataset_id": null,
+      "allowed_value": "MSE,MAE,MRE",
+      "default_value": "MSE"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 19,
+    "fields": {
+      "property_id": 3,
+      "model_id": 3,
+      "dataset_id": null,
+      "allowed_value": null,
+      "default_value": "3"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 20,
+    "fields": {
+      "property_id": 6,
+      "model_id": 3,
+      "dataset_id": 2,
+      "allowed_value": null,
+      "default_value": "192"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 21,
+    "fields": {
+      "property_id": 7,
+      "model_id": 3,
+      "dataset_id": 2,
+      "allowed_value": null,
+      "default_value": "192"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 22,
+    "fields": {
+      "property_id": 6,
+      "model_id": 3,
+      "dataset_id": 4,
+      "allowed_value": null,
+      "default_value": "512"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 23,
+    "fields": {
+      "property_id": 7,
+      "model_id": 3,
+      "dataset_id": 4,
+      "allowed_value": null,
+      "default_value": "512"
     }
   }
 ]
