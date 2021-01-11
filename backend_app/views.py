@@ -434,7 +434,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             self.queryset = self.queryset.filter(model_id=model_id, public=True)
             # Get weights of current user
             q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False)
-            self.queryset = self.queryset.union(q_perm).order_by('-id')
+            self.queryset = (self.queryset | q_perm).distinct()
             return self.queryset
         else:
             return super().get_queryset()
