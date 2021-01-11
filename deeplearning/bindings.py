@@ -1,11 +1,12 @@
 from deeplearning import datasets
-from deeplearning.models import lenet, vgg, segnet, segnetBN
 
 losses_binding = {
     'CrossEntropy': 'cross_entropy',
     'Cross Entropy': 'cross_entropy',
     'SoftCrossEntropy': 'soft_cross_entropy',
     'MSE': 'mean_squared_error',
+    'BCE': 'binary_cross_entropy',
+    'Dice': 'dice',
 }
 metrics_binding = {
     'CategoricalAccuracy': 'categorical_accuracy',
@@ -20,11 +21,4 @@ dataset_binding = {
     2: datasets.ISICSEG,
     3: datasets.ISICCLAS,
     4: datasets.Pneumothorax,
-}
-
-models_binding = {
-    1: lenet.LeNet,
-    2: vgg.VGG16,
-    4: segnet.SegNet,
-    5: segnetBN.SegNetBN,
 }
