@@ -54,7 +54,7 @@ python manage.py createsuperuser
 python scripts/init_fixtures.py
 
 # Load fixtures into the DB (default entries)
-python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json modelweights.json auth.json
+python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json modelweights.json auth_app.json
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>
@@ -63,7 +63,7 @@ python manage.py runserver <my-server>:<my-server-port>
 python manage.py celery
 ```
 
-Read the [auth/README.md](auth/README.md) file for configuring the authentication backend.
+Read the [auth/README.md](auth_app/README.md) file for configuring the authentication backend.
 
 ## API Practice
 

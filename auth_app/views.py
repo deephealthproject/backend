@@ -10,7 +10,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status, views, viewsets
 from rest_framework.response import Response
 
-from auth import serializers, swagger
+from auth_app import serializers, swagger
 from backend import settings
 
 

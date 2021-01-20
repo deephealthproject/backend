@@ -52,6 +52,9 @@ INSTALLED_APPS = [
     'social_django',
     'rest_framework_social_oauth2',
     'django_rest_passwordreset',
+    'auth_app.apps.AuthAppConfig',
+    'streamflow_app.apps.SFAppConfig',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -80,7 +83,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
 }
 
 OAUTH2_PROVIDER = {

@@ -1,13 +1,12 @@
 import os
 from os.path import join as opjoin
 
-from django.db import models
-from django.db.models.signals import pre_delete
-
-from django.dispatch import receiver
 from django.conf import settings
+from django.db import models
 from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 
 class Perm(models.TextChoices):

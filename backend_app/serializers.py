@@ -3,7 +3,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework.utils import model_meta
 
-from auth import serializers as auth_serializers
 from backend_app import models
 from rest_framework import exceptions
 from typing import List, Dict
