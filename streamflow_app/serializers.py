@@ -10,8 +10,20 @@ class SFSSHSerializer(serializers.ModelSerializer):
         write_only_fields = ['ssh_key_passphrase']
 
     def create(self, validated_data):
-        o = models.SFSSH.objects.create(**validated_data)
-        o.type = models.SFEnvironment.SFConfigType.SSH
-        o.user = self.context['request'].user
+        validated_data['user'] = self.context['request'].user
+        o = self.Meta.model.objects.create(**validated_data)
+        o.save()
+        return o
+
+
+class SFHelmSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SFHelm
+        fields = '__all__'
+        write_only_fields = ['password']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        o = self.Meta.model.objects.create(**validated_data)
         o.save()
         return o

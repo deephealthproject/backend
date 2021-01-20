@@ -1,12 +1,12 @@
-from django.urls import include, path, re_path
+from django.urls import include, path
 
-from streamflow_app import swagger, views
 from backend_app.routers import HybridRouter
+from streamflow_app import views
 
 router = HybridRouter()
 
 router.register(r'ssh-configs', views.SFSSHViewSet)
-
+router.register(r'helm-configs', views.SFHelmViewSet)
 
 urlpatterns = [
     path(f'', include(router.urls)),
