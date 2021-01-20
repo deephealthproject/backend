@@ -849,12 +849,14 @@ class TrainViewSet(views.APIView):
             hyperparams = {}
 
             # Check if current model has some custom properties and load them
-            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id)
+            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id).select_related(
+                'property_id')
             if props_allowed:
                 for p in props_allowed:
                     hyperparams[p.property_id.name] = p.default_value
             props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id,
-                                                                  dataset_id=weight.dataset_id)
+                                                                  dataset_id=weight.dataset_id).select_related(
+                'property_id')
             # Override with allowedproperties specific for the dataset
             if props_allowed:
                 for p in props_allowed:

@@ -87,7 +87,8 @@ def do_inference(request, serializer):
 
     hyperparams = {}
     # Check if current model has some custom properties and load them
-    props_allowed = models.AllowedProperty.objects.filter(model_id=i.modelweights_id.model_id_id)
+    props_allowed = models.AllowedProperty.objects.filter(model_id=i.modelweights_id.model_id_id).select_related(
+        'property_id')
     if props_allowed:
         for p in props_allowed:
             hyperparams[p.property_id.name] = p.default_value
@@ -99,7 +100,8 @@ def do_inference(request, serializer):
             hyperparams[p.name] = p.default
 
     # Retrieve configuration of the specified modelweights
-    qs = models.TrainingSetting.objects.filter(training_id__modelweights_id=i.modelweights_id)
+    qs = models.TrainingSetting.objects.filter(training_id__modelweights_id=i.modelweights_id).select_related(
+        'property_id')
 
     # Create the dict of training settings
     for setting in qs:
