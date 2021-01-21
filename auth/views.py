@@ -30,29 +30,6 @@ class TestAuthAPI(views.APIView):
         return Response({'result': 'ok'}, status=status.HTTP_200_OK)
 
 
-# class GetUserView(views.APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-#
-#     @swagger_auto_schema(responses={
-#         '200': openapi.Response('On a successful operation, it returns information about current user.',
-#                                 serializers.UserSerializer,
-#                                 examples={
-#                                     "application/json": {
-#                                         "username": "myuser",
-#                                         "email": "myemail",
-#                                         "first_name": "first_name",
-#                                         "last_name": "last_name"
-#                                     }
-#                                 })
-#     })
-#     def get(self, request, *args, **kwargs):
-#         """Test the authentication returning information about the user
-#
-#         This method returns some information about current user if the request include an authorization token.
-#         """
-#         return Response(serializers.UserSerializer(request.user).data)
-
-
 class UsersViewSet(mixins.ListModelMixin,
                    mixins.RetrieveModelMixin,
                    viewsets.GenericViewSet):

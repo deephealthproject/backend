@@ -1,7 +1,7 @@
+from django.contrib.auth import password_validation
 from django.contrib.auth.models import User
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from rest_framework import serializers
-from django.contrib.auth import password_validation
+from rest_framework import exceptions, serializers
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -10,12 +10,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'first_name', 'last_name']
-        read_only = ['id', 'email', 'first_name', 'last_name']
+        read_only = ['id', 'first_name', 'last_name']
 
     def create(self, validated_data):
-        user = User.objects.create(
-            username=validated_data['username']
-        )
+        email = validated_data.get('email')
+        if User.objects.filter(email=email).count() > 0:
+            # user already registered
+            raise exceptions.ParseError({"Error": f"User with email: `{email}` already exists."})
+        user = User.objects.create(**validated_data)
         user.set_password(validated_data['password'])
         user.save()
         return user

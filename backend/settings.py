@@ -109,7 +109,6 @@ SOCIAL_AUTH_PIPELINE = (
     # the logged in user's email address.
     # 'repairs_accounts.pipeline.get_username',
 
-    # 'social_core.pipeline.mail.mail_validation',
     'social_core.pipeline.social_auth.associate_by_email',
     'social_core.pipeline.user.create_user',
     'social_core.pipeline.social_auth.associate_user',
