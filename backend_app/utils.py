@@ -51,10 +51,9 @@ def guess_extension(ftype):
 def do_inference(request, serializer):
     dataset = serializer.validated_data['dataset_id']
     uuid4 = uuid.uuid4().hex + '.log'
-    modelweights_id = serializer.validated_data['modelweights_id']
-    dataset_id = serializer.validated_data['dataset_id']
+    weight = serializer.validated_data['modelweights_id']
+    project = serializer.validated_data['project_id']
 
-    weight = modelweights_id
     user = request.user
 
     # Check if current user can use an existing weight
@@ -70,8 +69,9 @@ def do_inference(request, serializer):
         return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
     i = models.Inference(
-        modelweights_id=modelweights_id,
-        dataset_id=dataset_id,
+        modelweights_id=weight,
+        dataset_id=dataset,
+        project_id=project,
         stats='',  # todo change
         # logfile=models.default_logfile_path(settings.INFERENCE_DIR, 'logs'),
         # outputfile=models.default_logfile_path(settings.OUTPUTS_DIR),
@@ -79,10 +79,6 @@ def do_inference(request, serializer):
         outputfile=models.generate_file_path(uuid4, settings.OUTPUTS_DIR),
     )
     i.save()
-    p_id = serializer.validated_data['project_id']
-    project = models.Project.objects.get(id=p_id)
-    project.inference_id = i
-    project.save()
     task_name = project.task_id.name.lower()
 
     hyperparams = {}
