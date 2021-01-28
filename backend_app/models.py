@@ -18,6 +18,16 @@ def generate_file_path(filename, *args):
     return opjoin(*args, f'{filename}')
 
 
+class ColorTypes(models.TextChoices):
+    none = 'NONE', 'ecvl.ColorType.none'
+    GRAY = 'GRAY', 'ecvl.ColorType.GRAY'
+    RGB = 'RGB', 'ecvl.ColorType.RGB'
+    RGBA = 'RGBA', 'ecvl.ColorType.RGBA'
+    BGR = 'BGR', 'ecvl.ColorType.BGR'
+    HSV = 'HSV', 'ecvl.ColorType.HSV'
+    YCbCr = 'YCBCR', 'ecvl.ColorType.YCbCr'
+
+
 class AllowedProperty(models.Model):
     """
     This model keeps track of default and allowed values of the models.
@@ -54,6 +64,9 @@ class Dataset(models.Model):
     public = models.BooleanField(default=False)
 
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission')
+
+    ctype = models.CharField(choices=ColorTypes.choices, max_length=5, default=ColorTypes.RGB)
+    ctype_gt = models.CharField(choices=ColorTypes.choices, max_length=5, null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=['is_single_image'])]
@@ -210,7 +223,12 @@ class TrainingSetting(models.Model):
 
 @receiver(pre_delete, sender=Model, dispatch_uid='model_delete_signal')
 @receiver(pre_delete, sender=ModelWeights, dispatch_uid='modelweight_delete_signal')
-def file_deleted(sender, instance, using, **kwargs):
-    # Delete onnx file from disk
-    if os.path.isfile(instance.location):
-        os.remove(instance.location)
+@receiver(pre_delete, sender=Training, dispatch_uid='training_delete_signal')
+@receiver(pre_delete, sender=Inference, dispatch_uid='inference_delete_signal')
+def delete_files(sender, instance, **kwargs):
+    fields_to_delete = ['logfile', 'outputfile', 'location']
+    for f in fields_to_delete:
+        if hasattr(instance, f):
+            f = eval(f'instance.{f}')
+            if os.path.isfile(f):
+                os.remove(f)
