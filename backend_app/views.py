@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
 from deeplearning.tasks import classification, segmentation
-from deeplearning.utils import nn_settings
+from deeplearning.utils import createConfig
 
 
 def check_permission(instance, user, operation):
@@ -796,7 +796,8 @@ class TrainViewSet(views.APIView):
 
                 # Check if current user can use an existing weight as pretraining
                 if not models.ModelWeightsPermission.objects.filter(modelweight_id=weight.pretrained_on_id,
-                                                                    user=user).exists():
+                                                                    user=user).exists() \
+                        and not weight.pretrained_on.public:
                     error = {
                         "Error": f"The {user.username} user has no permission to access the chosen pretraining weight"}
                     return Response(error, status=status.HTTP_401_UNAUTHORIZED)
@@ -888,7 +889,7 @@ class TrainViewSet(views.APIView):
                 ts.save()
                 hyperparams[property.name] = ts.value
 
-            config = nn_settings(training=training, hyperparams=hyperparams)
+            config = createConfig(training, hyperparams, 'training')
             if not config:
                 return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

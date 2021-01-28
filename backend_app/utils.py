@@ -9,9 +9,8 @@ from rest_framework.response import Response
 
 from backend import settings
 from backend_app import models, serializers
-from deeplearning.tasks import classification
-from deeplearning.tasks import segmentation
-from deeplearning.utils import inference_settings
+from deeplearning.tasks import classification, segmentation
+from deeplearning.utils import createConfig
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -49,10 +48,10 @@ def guess_extension(ftype):
 
 
 def do_inference(request, serializer):
-    dataset = serializer.validated_data['dataset_id']
     uuid4 = uuid.uuid4().hex + '.log'
     modelweights_id = serializer.validated_data['modelweights_id']
     dataset_id = serializer.validated_data['dataset_id']
+    project_id = serializer.validated_data['project_id']
 
     weight = modelweights_id
     user = request.user
@@ -72,6 +71,7 @@ def do_inference(request, serializer):
     i = models.Inference(
         modelweights_id=modelweights_id,
         dataset_id=dataset_id,
+        project_id=project_id,
         stats='',  # todo change
         # logfile=models.default_logfile_path(settings.INFERENCE_DIR, 'logs'),
         # outputfile=models.default_logfile_path(settings.OUTPUTS_DIR),
@@ -79,11 +79,7 @@ def do_inference(request, serializer):
         outputfile=models.generate_file_path(uuid4, settings.OUTPUTS_DIR),
     )
     i.save()
-    p_id = serializer.validated_data['project_id']
-    project = models.Project.objects.get(id=p_id)
-    project.inference_id = i
-    project.save()
-    task_name = project.task_id.name.lower()
+    task_name = project_id.task_id.name.lower()
 
     hyperparams = {}
     # Check if current model has some custom properties and load them
@@ -107,7 +103,7 @@ def do_inference(request, serializer):
     for setting in qs:
         hyperparams[setting.property_id.name] = setting.value
 
-    config = inference_settings(inference_id=i.id, hyperparams=hyperparams, dataset_id=dataset.id)
+    config = createConfig(i, hyperparams, 'inference')
     if not config:
         return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
