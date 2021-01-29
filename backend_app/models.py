@@ -225,8 +225,9 @@ class TrainingSetting(models.Model):
 @receiver(pre_delete, sender=ModelWeights, dispatch_uid='modelweight_delete_signal')
 @receiver(pre_delete, sender=Training, dispatch_uid='training_delete_signal')
 @receiver(pre_delete, sender=Inference, dispatch_uid='inference_delete_signal')
+@receiver(pre_delete, sender=Dataset, dispatch_uid='dataset_delete_signal')
 def delete_files(sender, instance, **kwargs):
-    fields_to_delete = ['logfile', 'outputfile', 'location']
+    fields_to_delete = ['logfile', 'outputfile', 'location', 'path']
     for f in fields_to_delete:
         if hasattr(instance, f):
             f = eval(f'instance.{f}')

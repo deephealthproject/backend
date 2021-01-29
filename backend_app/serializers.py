@@ -1,11 +1,12 @@
+from typing import Dict, List
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import exceptions
 from rest_framework import serializers
 from rest_framework.utils import model_meta
 
 from backend_app import models
-from rest_framework import exceptions
-from typing import List, Dict
 
 
 class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
@@ -94,8 +95,11 @@ class DatasetSerializer(M2MSerializer):
 
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name', 'path', 'task_id', 'users', 'public']
-        write_only_fields = ['name', 'path', 'task_id']  # Only for post
+        fields = ['id', 'name', 'path', 'task_id', 'users', 'public', 'ctype', 'ctype_gt']
+        extra_kwargs = {
+            'ctype': {'required': False},
+            'ctype_gt': {'required': False},
+        }
 
     def create(self, validated_data):
         users = validated_data.pop('users')
@@ -137,7 +141,6 @@ class ModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Model
         fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id', 'celery_id']
-        write_only_fields = ['onnx_url', 'onnx_data', 'dataset_id']
         read_only_fields = ['celery_id']
 
     def validate(self, data):
