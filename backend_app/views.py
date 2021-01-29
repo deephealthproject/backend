@@ -118,6 +118,7 @@ class DatasetViewSet(mixins.ListModelMixin,
         The `path` field must contain the URL of a dataset, e.g. \
         [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1) \
         or a local path pointing to a YAML file.
+        The `ctype` and `ctype_gt` indicates the kind of color type of the image and ground truth (if exists).
         """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
@@ -192,11 +193,10 @@ class InferenceViewSet(views.APIView):
             return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @swagger_auto_schema(manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY,
-                                                              "Id representing a project",
-                                                              required=True, type=openapi.TYPE_INTEGER)],
-                         responses=swagger.Inference_get_response
-                         )
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('project_id', openapi.IN_QUERY, "Id representing a project", required=True,
+                          type=openapi.TYPE_INTEGER)],
+        responses=swagger.Inference_get_response)
     def get(self, request):
         """Return all the inferences made within a project
 
@@ -893,25 +893,38 @@ class TrainViewSet(views.APIView):
             if not config:
                 return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Differentiate the task and start training
-            if task_name == 'classification':
-                celery_id = classification.classificate.delay(config)
-                # celery_id = classification.classificate(config)
-            elif task_name == 'segmentation':
-                celery_id = segmentation.segment.delay(config)
-                # celery_id = segmentation.segment(config)
+            if serializer.validated_data['task_manager'] == 'CELERY':
+                # Differentiate the task and start training
+                if task_name == 'classification':
+                    celery_id = classification.classificate.delay(config)
+                    # celery_id = classification.classificate(config)
+                elif task_name == 'segmentation':
+                    celery_id = segmentation.segment.delay(config)
+                    # celery_id = segmentation.segment(config)
+                else:
+                    return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+
+                training = models.Training.objects.get(id=training.id)
+                training.celery_id = celery_id.id
+                training.save()
+
+                response = {
+                    "result": "ok",
+                    "process_id": celery_id.id,
+                    "weight_id": weight.id
+                }
             else:
-                return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
-
-            training = models.Training.objects.get(id=training.id)
-            training.celery_id = celery_id.id
-            training.save()
-
-            response = {
-                "result": "ok",
-                "process_id": celery_id.id,
-                "weight_id": weight.id
-            }
+                # TODO Run task using StreamFlow
+                if task_name == 'classification':
+                    celery_id = classification.classificate(config)
+                elif task_name == 'segmentation':
+                    celery_id = segmentation.segment(config)
+                else:
+                    return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+                response = {
+                    "result": "ok",
+                    "weight_id": weight.id
+                }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -923,17 +936,16 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
     params = ['project_id']
 
     def get_queryset(self):
+        user = self.request.user
         project_id = self.request.query_params.get('project_id')
-        if not models.ProjectPermission.objects.filter(user=self.request.user, project=project_id).exists():
-            raise exceptions.PermissionDenied(
-                {'Error': f"'{self.request.user}' has no permission to view Project {project_id}"})
-        else:
-            self.queryset = self.queryset.filter(project_id=project_id)
+        if not models.ProjectPermission.objects.filter(user=user, project=project_id).exists():
+            raise exceptions.PermissionDenied({'Error': f"'{user}' has no permission to view Project {project_id}"})
+        self.queryset = self.queryset.filter(project_id=project_id)
         return self.queryset
 
-    @swagger_auto_schema(
-        manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
-                                             required=True, type=openapi.TYPE_INTEGER)])
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
+                          required=True, type=openapi.TYPE_INTEGER)])
     def list(self, request, *args, **kwargs):
         """Returns past training processes
 

@@ -108,20 +108,33 @@ def do_inference(request, serializer):
         return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Launch the inference
-    # Differentiate the task and start training
-    if task_name == 'classification':
-        celery_id = classification.classificate.delay(config)
-        # celery_id = classification.classificate(config)
-    elif task_name == 'segmentation':
-        celery_id = segmentation.segment.delay(config)
-        # celery_id = segmentation.segment(config)
-    else:
-        return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+    if serializer.validated_data['task_manager'] == 'CELERY':
+        # Differentiate the task and start training
+        if task_name == 'classification':
+            celery_id = classification.classificate.delay(config)
+            # celery_id = classification.classificate(config)
+        elif task_name == 'segmentation':
+            celery_id = segmentation.segment.delay(config)
+            # celery_id = segmentation.segment(config)
+        else:
+            return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
 
-    i.celery_id = celery_id.id
-    i.save()
-    response = serializers.InferenceResponseSerializer({
-        "result": "ok",
-        "process_id": celery_id.id,
-    })
+        i.celery_id = celery_id.id
+        i.save()
+        response = serializers.InferenceResponseSerializer({
+            "result": "ok",
+            "process_id": celery_id.id,
+        })
+    else:
+        # TODO Run task using StreamFlow
+        if task_name == 'classification':
+            celery_id = classification.classificate(config)
+        elif task_name == 'segmentation':
+            celery_id = segmentation.segment(config)
+        else:
+            return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+        response = {
+            "result": "ok",
+            "weight_id": weight.id
+        }
     return Response(response.data, status=status.HTTP_201_CREATED)

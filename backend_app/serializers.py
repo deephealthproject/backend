@@ -112,20 +112,22 @@ class DatasetSerializer(M2MSerializer):
 
 
 class InferenceSerializer(serializers.ModelSerializer):
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
+
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id']
+        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id', 'task_manager']
         read_only_fields = ['celery_id', 'logfile', 'outputfile', 'stats']
 
 
 class InferenceSingleSerializer(serializers.ModelSerializer):
-    project_id = serializers.IntegerField()
     image_url = serializers.URLField(required=False)
     image_data = serializers.CharField(required=False)
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
 
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'image_url', 'image_data']
+        fields = ['project_id', 'modelweights_id', 'image_url', 'image_data', 'task_manager']
 
     def validate(self, data):
         if not data.get('image_url') and not data.get('image_data'):
@@ -287,6 +289,8 @@ class TrainSerializer(serializers.Serializer):
     project_id = serializers.IntegerField()
     properties = PropertyTrainSerializer(many=True)
     weights_id = serializers.IntegerField(allow_null=True)
+
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
 
 
 class TrainingSettingSerializer(serializers.ModelSerializer):
