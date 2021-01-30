@@ -1,5 +1,5 @@
-pyecvl>=0.4.2
-pyeddl
+#pyecvl>=0.4.2
+#pyeddl
 
 Django
 djangorestframework

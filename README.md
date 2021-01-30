@@ -12,8 +12,8 @@ DB schema: [https://drawsql.app/aimagelab/diagrams/api-0-2-0](https://drawsql.ap
 
 ### Requirements
 - Python3.6+
-- curl -- `sudo apt install curl`
-- **PyECVL 0.4.2+** and **PyEDDL 0.8.0+**
+- git curl -- `sudo apt install git curl`
+- Requirements for **PyECVL 0.4.2+** and **PyEDDL 0.8.0+**
 
 Clone and install back-end with:
 
@@ -21,7 +21,11 @@ Clone and install back-end with:
 cd ~
 git clone https://github.com/deephealthproject/backend.git
 cd backend
+virtualenv env
+source env/bin/activate
 pip install -r requirements.txt
+chmod u+x scripts/pyecvl_install.sh
+scripts/pyecvl_install.sh
 ```
 Generate a new SECRET_KEY with:
 
