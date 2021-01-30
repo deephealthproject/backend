@@ -21,6 +21,7 @@ from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import createConfig
+from streamflow_app import models as sf_models
 
 
 def check_permission(instance, user, operation):
@@ -186,8 +187,13 @@ class InferenceViewSet(views.APIView):
 
         This is the main entry point to start the inference. \
         It is mandatory to specify a pre-trained model and a dataset.
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.InferenceSerializer(data=request.data)
+        serializer = serializers.InferenceSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
             return utils.do_inference(request, serializer)
@@ -218,8 +224,14 @@ class InferenceSingleViewSet(views.APIView):
 
         The image_url data parameter represents an image url to download and test, while image_data represents the \
         base64 content of an image to process.
+
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.InferenceSingleSerializer(data=request.data)
+        serializer = serializers.InferenceSingleSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
             project_id = serializer.validated_data['project_id']
@@ -777,8 +789,14 @@ class TrainViewSet(views.APIView):
         This is the main entry point to start the training of a model on a dataset. \
         It is mandatory to specify a model to be trained and a dataset.
         When providing a `weights_id`, the training starts from the pre-trained model.
+
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.TrainSerializer(data=request.data)
+        serializer = serializers.TrainSerializer(data=request.data, context={'request': request})
         user = request.user
         if serializer.is_valid():
             # Create a new modelweights and start training
@@ -914,6 +932,18 @@ class TrainViewSet(views.APIView):
                     "weight_id": weight.id
                 }
             else:
+                env = serializer.validated_data['env']
+                # env['type'] could be SSH
+                # env['id'] could be 12
+
+                # Get the specific environment chosen (SSH or Helm)
+                sf_model = sf_models.choice_to_model(env['type'])
+
+                # Retrieve the environment by id (SSH env with id 12)
+                environment = sf_model.objects.get(id=env['id'])
+
+                # TODO Pass environment information to StreamFlow
+
                 # TODO Run task using StreamFlow
                 if task_name == 'classification':
                     celery_id = classification.classificate(config)

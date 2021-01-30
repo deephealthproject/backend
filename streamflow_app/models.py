@@ -2,15 +2,26 @@ from django.conf import settings
 from django.db import models
 
 
+def choice_to_model(sf_type):
+    """
+    Giving the environment choise type it returns the model related to that type.
+    e.g.
+    SSH --> SFSSH
+    DCK --> SFDocker
+    """
+    model_name = eval(f'SFEnvironment.SFConfigType.{sf_type}.label')
+    return eval(f'{model_name}')
+
+
 class SFEnvironment(models.Model):
     """StreamFlow basic environment"""
 
     class SFConfigType(models.TextChoices):
-        DOCKER = 'DCK', 'docker'
-        DOCKER_COMPOSE = 'DCC', 'docker-compose'
-        SSH = 'SSH', 'ssh'
-        HELM = 'HLM', 'helm'
-        SLURM = 'SLM', 'slurm'
+        DOCKER = 'DCK', 'SFDocker'
+        DOCKER_COMPOSE = 'DCC', 'SFDockerCompose'
+        SSH = 'SSH', 'SFSSH'
+        HELM = 'HLM', 'SFHelm'
+        SLURM = 'SLM', 'SFSlurm'
 
     name = models.CharField(max_length=255)
     type = models.CharField(choices=SFConfigType.choices, max_length=3)

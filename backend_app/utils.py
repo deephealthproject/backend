@@ -11,6 +11,7 @@ from backend import settings
 from backend_app import models, serializers
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import createConfig
+from streamflow_app import models as sf_models
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -126,6 +127,18 @@ def do_inference(request, serializer):
             "process_id": celery_id.id,
         })
     else:
+        env = serializer.validated_data['env']
+        # env['type'] could be SSH
+        # env['id'] could be 12
+
+        # Get the specific environment chosen (SSH or Helm)
+        sf_model = sf_models.choice_to_model(env['type'])
+
+        # Retrieve the environment by id (SSH env with id 12)
+        environment = sf_model.objects.get(id=env['id'])
+
+        # TODO Pass environment information to StreamFlow
+
         # TODO Run task using StreamFlow
         if task_name == 'classification':
             celery_id = classification.classificate(config)
