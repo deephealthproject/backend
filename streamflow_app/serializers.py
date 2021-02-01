@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 
 from streamflow_app import models
 
@@ -9,11 +9,13 @@ class SFEnvSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = self.context['request'].user
+        task_manager = self.context['request'].data['task_manager']
         id = data['id']
         type = data['type']
         model = models.choice_to_model(type)
-        if not model.objects.filter(id=id).exists() or not model.objects.filter(id=id, user=user).exists():
-            raise serializers.ValidationError({'id': f"There is no {type} environment with id `{id}`."})
+        if task_manager == 'STREAMFLOW' and \
+                (not model.objects.filter(id=id).exists() or not model.objects.filter(id=id, user=user).exists()):
+            raise exceptions.NotFound({'id': f"There is no {type} environment with id `{id}`."})
         return data
 
 

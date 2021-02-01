@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from backend import settings
-from backend_app import models, serializers
+from backend_app import models
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import createConfig
 from streamflow_app import models as sf_models
@@ -109,7 +109,29 @@ def do_inference(request, serializer):
         return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Launch the inference
-    if serializer.validated_data['task_manager'] == 'CELERY':
+    return launch_training_inference(
+        serializer.validated_data['task_manager'],
+        task_name,
+        i,
+        config,
+        serializer.validated_data.get('env')
+    )
+
+
+def launch_training_inference(task_manager, task_name, task_instance, config, sf_env=None, new_training_weight=None):
+    """
+    @param task_manager: string Celery or StreamFlow
+    @param task_name: String which indicates kind of task to execute (e.g. classification)
+    @param task_instance: django model instance (Training or Inference)
+    @param config: Dict with configuration parameters
+    @param sf_env: Dict with the StreamFlow environment id and type fields
+    @param new_training_weight: Integer with weight_id just created (only in training)
+    @return:
+    """
+    # Launch the training or inference
+    task_error = Response({'error': f'Task with name `{task_name} does not exist.`'},
+                          status=status.HTTP_400_BAD_REQUEST)
+    if task_manager == 'CELERY':
         # Differentiate the task and start training
         if task_name == 'classification':
             celery_id = classification.classificate.delay(config)
@@ -118,36 +140,36 @@ def do_inference(request, serializer):
             celery_id = segmentation.segment.delay(config)
             # celery_id = segmentation.segment(config)
         else:
-            return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+            return task_error
 
-        i.celery_id = celery_id.id
-        i.save()
-        response = serializers.InferenceResponseSerializer({
+        task_instance.celery_id = celery_id.id
+        task_instance.save()
+        response = {
             "result": "ok",
             "process_id": celery_id.id,
-        })
+        }
     else:
-        env = serializer.validated_data['env']
-        # env['type'] could be SSH
-        # env['id'] could be 12
+        # sf_env['type'] could be SSH
+        # sf_env['id'] could be 12
 
         # Get the specific environment chosen (SSH or Helm)
-        sf_model = sf_models.choice_to_model(env['type'])
+        sf_model = sf_models.choice_to_model(sf_env['type'])
 
         # Retrieve the environment by id (SSH env with id 12)
-        environment = sf_model.objects.get(id=env['id'])
+        environment = sf_model.objects.get(id=sf_env['id'])
 
         # TODO Pass environment information to StreamFlow
 
         # TODO Run task using StreamFlow
         if task_name == 'classification':
-            celery_id = classification.classificate(config)
+            pass
+            # celery_id = classification.classificate(config)
         elif task_name == 'segmentation':
-            celery_id = segmentation.segment(config)
+            pass
+            # celery_id = segmentation.segment(config)
         else:
-            return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
-        response = {
-            "result": "ok",
-            "weight_id": weight.id
-        }
-    return Response(response.data, status=status.HTTP_201_CREATED)
+            return task_error
+        response = {"result": "ok"}
+    if new_training_weight:
+        response.update({"weight_id": new_training_weight})
+    return Response(response, status=status.HTTP_201_CREATED)

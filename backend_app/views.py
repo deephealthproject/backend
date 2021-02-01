@@ -19,9 +19,7 @@ from rest_framework.response import Response
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
-from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import createConfig
-from streamflow_app import models as sf_models
 
 
 def check_permission(instance, user, operation):
@@ -911,51 +909,15 @@ class TrainViewSet(views.APIView):
             if not config:
                 return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            if serializer.validated_data['task_manager'] == 'CELERY':
-                # Differentiate the task and start training
-                if task_name == 'classification':
-                    celery_id = classification.classificate.delay(config)
-                    # celery_id = classification.classificate(config)
-                elif task_name == 'segmentation':
-                    celery_id = segmentation.segment.delay(config)
-                    # celery_id = segmentation.segment(config)
-                else:
-                    return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+            return utils.launch_training_inference(
+                serializer.validated_data['task_manager'],
+                task_name,
+                training,
+                config,
+                serializer.validated_data.get('env'),
+                training.modelweights_id_id
+            )
 
-                training = models.Training.objects.get(id=training.id)
-                training.celery_id = celery_id.id
-                training.save()
-
-                response = {
-                    "result": "ok",
-                    "process_id": celery_id.id,
-                    "weight_id": weight.id
-                }
-            else:
-                env = serializer.validated_data['env']
-                # env['type'] could be SSH
-                # env['id'] could be 12
-
-                # Get the specific environment chosen (SSH or Helm)
-                sf_model = sf_models.choice_to_model(env['type'])
-
-                # Retrieve the environment by id (SSH env with id 12)
-                environment = sf_model.objects.get(id=env['id'])
-
-                # TODO Pass environment information to StreamFlow
-
-                # TODO Run task using StreamFlow
-                if task_name == 'classification':
-                    celery_id = classification.classificate(config)
-                elif task_name == 'segmentation':
-                    celery_id = segmentation.segment(config)
-                else:
-                    return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
-                response = {
-                    "result": "ok",
-                    "weight_id": weight.id
-                }
-            return Response(response, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
