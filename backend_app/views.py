@@ -652,7 +652,11 @@ class StatusView(views.APIView):
     @swagger_auto_schema(manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
                                                               "UUID representing a process",
                                                               required=True, type=openapi.TYPE_STRING,
-                                                              format=openapi.FORMAT_UUID)],
+                                                              format=openapi.FORMAT_UUID),
+                                            openapi.Parameter('full', openapi.IN_QUERY,
+                                                              "If true return the full history of a training/inference",
+                                                              required=False, default=False, type=openapi.TYPE_BOOLEAN)
+                                            ],
                          responses=swagger.StatusView_get_response
                          )
     def get(self, request):
@@ -660,11 +664,17 @@ class StatusView(views.APIView):
 
         This  API allows the frontend to query the status of a training or inference, identified by a `process_id` \
         (which is returned by `/train` or `/inference` APIs).
+
+        When the optional parameter `full=true` is provided, the status api returns the full log of the process \
+        execution.
         """
         if not self.request.query_params.get('process_id'):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
         process_id = self.request.query_params.get('process_id')
+        full = False
+        if self.request.query_params.get('full'):
+            full = self.request.query_params.get('full')
 
         if models.Training.objects.filter(celery_id=process_id).exists():
             process_type = 'training'
@@ -678,29 +688,40 @@ class StatusView(views.APIView):
                 "error": "Process not found."
             }
             return Response(data=res, status=status.HTTP_404_NOT_FOUND)
-
         try:
             with open(process.logfile, 'r') as f:
-                lines = f.read().splitlines()
-                last_line = lines[-1]
+                lines = f.read()
         except:
             res = {
                 "result": "error",
                 "error": "Log file not found"
             }
             return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if last_line == '<done>':
+
+        lines_split = lines.splitlines()
+        last_line = -1
+        if lines_split[last_line] == '<done>':
             process_status = 'finished'
-            last_line = lines[-2]
+            last_line = -2
         else:
             process_status = 'running'
+
+        if full:
+            try:
+                index = lines.index("Reading dataset")
+                process_data = ','.join(lines_split[index + 1:last_line])
+            except ValueError:
+                # index does not find the string
+                process_data = ','.join(lines_split[:last_line])
+        else:
+            process_data = lines_split[last_line]
 
         res = {
             'result': 'ok',
             'status': {
                 'process_type': process_type,
                 'process_status': process_status,
-                'process_data': last_line,
+                'process_data': process_data,
             }
         }
         return Response(data=res, status=status.HTTP_200_OK)
@@ -796,7 +817,8 @@ class TrainViewSet(views.APIView):
 
                 # Check if current user can use an existing weight as pretraining
                 if not models.ModelWeightsPermission.objects.filter(modelweight_id=weight.pretrained_on_id,
-                                                                    user=user).exists():
+                                                                    user=user).exists() \
+                        and not weight.pretrained_on.public:
                     error = {
                         "Error": f"The {user.username} user has no permission to access the chosen pretraining weight"}
                     return Response(error, status=status.HTTP_401_UNAUTHORIZED)

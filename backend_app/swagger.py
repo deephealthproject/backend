@@ -270,7 +270,24 @@ ProjectViewSet_get_response = {
 }
 
 StatusView_get_response = {
-    '200': openapi.Response('Status of process', serializers.StatusResponse())
+    '200': openapi.Response('Status of process', serializers.StatusResponse(),
+                            examples={"application/json":
+                                {
+                                    "result": "ok",
+                                    "status": {
+                                        "process_type": "training",
+                                        "process_status": "finished",
+                                        "process_data": "Train Epoch: 1/2 [1/30000]categorical_cross_entropy=1.130 - categorical_accuracy=0.121"
+                                    }
+                                }
+                            }),
+    '404': openapi.Response('Error if process_id is not found', serializers.GeneralErrorResponse(),
+                            examples={"application/json":
+                                {
+                                    "result": "error",
+                                    "error": "Process not found."
+                                }
+                            })
 }
 
 StopProcessViewSet_post_response = {
