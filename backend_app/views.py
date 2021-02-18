@@ -668,6 +668,8 @@ class StatusView(views.APIView):
         When the optional parameter `full=true` is provided, the status api returns the full log of the process \
         execution.
         """
+        full_return_string = False
+
         if not self.request.query_params.get('process_id'):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
@@ -709,10 +711,11 @@ class StatusView(views.APIView):
         if full:
             try:
                 index = lines.index("Reading dataset")
-                process_data = ','.join(lines_split[index + 1:last_line])
+                process_data = ','.join(lines_split[index + 1:last_line]) if full_return_string else lines_split[
+                                                                                                   index + 1:last_line]
             except ValueError:
                 # index does not find the string
-                process_data = ','.join(lines_split[:last_line])
+                process_data = ','.join(lines_split[:last_line]) if full_return_string else lines_split[:last_line]
         else:
             process_data = lines_split[last_line]
 
