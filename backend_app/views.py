@@ -19,8 +19,7 @@ from rest_framework.response import Response
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
-from deeplearning.tasks import classification, segmentation
-from deeplearning.utils import nn_settings
+from deeplearning.utils import createConfig
 
 
 def check_permission(instance, user, operation):
@@ -118,6 +117,7 @@ class DatasetViewSet(mixins.ListModelMixin,
         The `path` field must contain the URL of a dataset, e.g. \
         [`dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml`](https://www.dropbox.com/s/ul1yc8owj0hxpu6/isic_segmentation.yml?dl=1) \
         or a local path pointing to a YAML file.
+        The `ctype` and `ctype_gt` indicates the kind of color type of the image and ground truth (if exists).
         """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
@@ -185,18 +185,22 @@ class InferenceViewSet(views.APIView):
 
         This is the main entry point to start the inference. \
         It is mandatory to specify a pre-trained model and a dataset.
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.InferenceSerializer(data=request.data)
+        serializer = serializers.InferenceSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
             return utils.do_inference(request, serializer)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @swagger_auto_schema(manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY,
-                                                              "Id representing a project",
-                                                              required=True, type=openapi.TYPE_INTEGER)],
-                         responses=swagger.Inference_get_response
-                         )
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('project_id', openapi.IN_QUERY, "Id representing a project", required=True,
+                          type=openapi.TYPE_INTEGER)],
+        responses=swagger.Inference_get_response)
     def get(self, request):
         """Return all the inferences made within a project
 
@@ -218,8 +222,14 @@ class InferenceSingleViewSet(views.APIView):
 
         The image_url data parameter represents an image url to download and test, while image_data represents the \
         base64 content of an image to process.
+
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.InferenceSingleSerializer(data=request.data)
+        serializer = serializers.InferenceSingleSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
             project_id = serializer.validated_data['project_id']
@@ -801,8 +811,14 @@ class TrainViewSet(views.APIView):
         This is the main entry point to start the training of a model on a dataset. \
         It is mandatory to specify a model to be trained and a dataset.
         When providing a `weights_id`, the training starts from the pre-trained model.
+
+
+        The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
+        StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
+        It contains `id` referring to an existing SF Environment (SSH or Helm for example) and a `type` choice \
+        field which indicates the kind of environment to employ.
         """
-        serializer = serializers.TrainSerializer(data=request.data)
+        serializer = serializers.TrainSerializer(data=request.data, context={'request': request})
         user = request.user
         if serializer.is_valid():
             # Create a new modelweights and start training
@@ -874,12 +890,14 @@ class TrainViewSet(views.APIView):
             hyperparams = {}
 
             # Check if current model has some custom properties and load them
-            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id)
+            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id).select_related(
+                'property_id')
             if props_allowed:
                 for p in props_allowed:
                     hyperparams[p.property_id.name] = p.default_value
             props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id,
-                                                                  dataset_id=weight.dataset_id)
+                                                                  dataset_id=weight.dataset_id).select_related(
+                'property_id')
             # Override with allowedproperties specific for the dataset
             if props_allowed:
                 for p in props_allowed:
@@ -911,30 +929,19 @@ class TrainViewSet(views.APIView):
                 ts.save()
                 hyperparams[property.name] = ts.value
 
-            config = nn_settings(training=training, hyperparams=hyperparams)
+            config = createConfig(training, hyperparams, 'training')
             if not config:
                 return Response({"Error": "Properties error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Differentiate the task and start training
-            if task_name == 'classification':
-                celery_id = classification.classificate.delay(config)
-                # celery_id = classification.classificate(config)
-            elif task_name == 'segmentation':
-                celery_id = segmentation.segment.delay(config)
-                # celery_id = segmentation.segment(config)
-            else:
-                return Response({'error': 'error on task'}, status=status.HTTP_400_BAD_REQUEST)
+            return utils.launch_training_inference(
+                serializer.validated_data['task_manager'],
+                task_name,
+                training,
+                config,
+                serializer.validated_data.get('env'),
+                training.modelweights_id_id
+            )
 
-            training = models.Training.objects.get(id=training.id)
-            training.celery_id = celery_id.id
-            training.save()
-
-            response = {
-                "result": "ok",
-                "process_id": celery_id.id,
-                "weight_id": weight.id
-            }
-            return Response(response, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -945,17 +952,16 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
     params = ['project_id']
 
     def get_queryset(self):
+        user = self.request.user
         project_id = self.request.query_params.get('project_id')
-        if not models.ProjectPermission.objects.filter(user=self.request.user, project=project_id).exists():
-            raise exceptions.PermissionDenied(
-                {'Error': f"'{self.request.user}' has no permission to view Project {project_id}"})
-        else:
-            self.queryset = self.queryset.filter(project_id=project_id)
+        if not models.ProjectPermission.objects.filter(user=user, project=project_id).exists():
+            raise exceptions.PermissionDenied({'Error': f"'{user}' has no permission to view Project {project_id}"})
+        self.queryset = self.queryset.filter(project_id=project_id)
         return self.queryset
 
-    @swagger_auto_schema(
-        manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
-                                             required=True, type=openapi.TYPE_INTEGER)])
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
+                          required=True, type=openapi.TYPE_INTEGER)])
     def list(self, request, *args, **kwargs):
         """Returns past training processes
 

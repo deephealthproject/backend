@@ -2,7 +2,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from auth import serializers
+from auth_app import serializers
 
 users_list_response = {
     '200': openapi.Response('On a successful operation, it returns the list of users',

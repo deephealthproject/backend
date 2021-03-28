@@ -32,13 +32,15 @@ if __name__ == "__main__":
     # Change models location
     print('Setting up fixtures...')
     # Read in the file
-    fname = opjoin(os.getcwd(), "backend_app", "fixtures", "model.json")
-    with open(fname, 'r') as file:
-        filedata = file.read()
+    fixtures_path = opjoin(os.getcwd(), "backend_app", "fixtures")
+    fnames = ["model.json", "modelweights.json"]
+    for fname in fnames:
+        with open(opjoin(fixtures_path, fname), 'r') as file:
+            filedata = file.read()
 
-    # Replace the target string
-    filedata = filedata.replace('%MODELS_PATH%', str(opjoin(path, 'onnx')))
+        # Replace the target string
+        filedata = filedata.replace('%MODELS_PATH%', str(opjoin(path, 'onnx')))
 
-    # Write the file out again
-    with open(fname, 'w') as file:
-        file.write(filedata)
+        # Write the file out again
+        with open(opjoin(fixtures_path, fname), 'w') as file:
+            file.write(filedata)

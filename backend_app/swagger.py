@@ -56,7 +56,9 @@ DatasetViewSet_create_response = {
                                     "task_id": 2,
                                     "users": [
                                         {"username": "dhtest", "permission": "OWN"}
-                                    ]
+                                    ],
+                                    "ctype": "RGB",
+                                    "ctype_gt": "GRAY",
                                 }
                             }),
     '400': openapi.Response('Something is wrong in the request. Details in `error`.',
@@ -135,7 +137,7 @@ ModelWeightsViewSet_list_retrieve_body = {
     "model_id": 5,
     "dataset_id": 152,
     "pretrained_on": None,
-    "public": False,
+    "public": True,
     "users": [
         {
             "username": "dhtest",

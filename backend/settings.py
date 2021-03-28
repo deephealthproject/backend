@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'social_django',
     'rest_framework_social_oauth2',
     'django_rest_passwordreset',
+    'auth_app.apps.AuthAppConfig',
+    'streamflow_app.apps.SFAppConfig',
 ]
 
 MIDDLEWARE = [
@@ -80,7 +82,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    # 'DEFAULT_FILTER_BACKENDS': (
+    #     'django_filters.rest_framework.DjangoFilterBackend',
+    # ),
 }
 
 OAUTH2_PROVIDER = {
@@ -175,7 +180,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
-APPEND_SLASH = False
+APPEND_SLASH = True
 
 # Set data paths
 DATA_DIR = env('DATA_DIR')

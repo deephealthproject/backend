@@ -2,6 +2,10 @@
 
 # Set PyECVL default version
 PYECVL_TAG="${1:-0.7.0}"
+GPU="${2:-GPU}"
+PROC=$(nproc)
+
+mkdir -p deephealth_libs && cd deephealth_libs
 
 # PyECVL cloning
 echo "Cloning PyECVL"
@@ -15,13 +19,13 @@ PYECVL_ROOT=$(pwd)
 # eddl and PyEDDL
 echo "Installing PyEDDL"
 cd third_party/pyeddl
-#git fetch && git checkout ff6b2c123a99734c084038ed465bea7065d70109
 PYEDDL_ROOT=$(pwd)
 cd third_party/eddl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON -DBUILD_PROTOBUF=ON \
-  -DBUILD_TARGET=GPU -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF ..
-cmake --build . --config Release --parallel "$(nproc)"
+  -DBUILD_TARGET=${GPU} -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF \
+  -DBUILD_SUPERBUILD=OFF ..
+cmake --build . --config Release --parallel ${PROC}
 cmake --build . --target install
 export EDDL_WITH_CUDA="true"
 export EDDL_DIR="$(pwd)/install"
@@ -36,7 +40,7 @@ mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DECVL_WITH_DICOM=ON \
   -DECVL_WITH_OPENSLIDE=ON -DECVL_DATASET=ON -DECVL_BUILD_EDDL=ON \
   -DECVL_TESTS=OFF -Deddl_DIR="$EDDL_DIR/lib/cmake/eddl" ..
-cmake --build . --config Release --parallel "$(nproc)"
+cmake --build . --config Release --parallel ${PROC}
 cmake --build . --target install
 export ECVL_DIR=$(pwd)/install
 cd $PYECVL_ROOT
