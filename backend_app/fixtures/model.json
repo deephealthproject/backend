@@ -4,8 +4,6 @@
     "pk": 1,
     "fields": {
       "name": "LeNet",
-      "location": "%MODELS_PATH%/lenet.onnx",
-      "celery_id": null,
       "task_id": 1
     }
   },
@@ -14,8 +12,6 @@
     "pk": 2,
     "fields": {
       "name": "VGG16",
-      "location": "%MODELS_PATH%/vgg16_in224.onnx",
-      "celery_id": null,
       "task_id": 1
     }
   },
@@ -24,8 +20,6 @@
     "pk": 3,
     "fields": {
       "name": "SegNet",
-      "location": "%MODELS_PATH%/segnet_in192.onnx",
-      "celery_id": null,
       "task_id": 2
     }
   }

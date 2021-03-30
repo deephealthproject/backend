@@ -105,10 +105,6 @@ class Inference(models.Model):
 
 class Model(models.Model):
     name = models.CharField(max_length=32)
-    location = models.CharField(max_length=2048)
-
-    # A new model onnx is uploaded to backend async with celery.
-    celery_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
 
     class Meta:
@@ -123,12 +119,15 @@ class ModelWeights(models.Model):
     location = models.CharField(max_length=2048)
     name = models.CharField(max_length=200)
 
-    model_id = models.ForeignKey(Model, on_delete=models.CASCADE)
-    dataset_id = models.ForeignKey(Dataset, on_delete=models.CASCADE)
+    model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
+    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
     pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     public = models.BooleanField(default=False)
 
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
+
+    # A new model onnx is uploaded to backend async with celery.
+    process_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
 
     class Meta:
         ordering = ['id']

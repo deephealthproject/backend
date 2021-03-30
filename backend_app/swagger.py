@@ -89,7 +89,7 @@ inferences_post_responses = {
                                     "error": "Non existing weights_id"
                                 }})
 }
-ModelViewSet_create_response = {
+ModelWeightsViewSet_create_response = {
     '200': openapi.Response(
         'On a successful operation, it returns the `process_id`, used for polling the operation status.',
         serializers.InferenceResponseSerializer,
@@ -101,14 +101,14 @@ ModelViewSet_create_response = {
         }),
 }
 
-ModelViewSet_create_request = openapi.Schema(
+ModelWeightsViewSet_create_request = openapi.Schema(
     type=openapi.TYPE_OBJECT,
-    required=['name', 'task_id'],
+    required=['name', 'model_id'],
     properties={
         'name': openapi.Schema(type=openapi.TYPE_STRING),
-        'task_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'model_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of related model."),
         'dataset_id': openapi.Schema(type=openapi.TYPE_INTEGER,
-                                     description="If given the current model has been already trained on that dataset."),
+                                     description="If given the current model weights has been obtained on that dataset."),
         'onnx_url': openapi.Schema(type=openapi.TYPE_STRING, pattern="https://*", description="ONNX file URL"),
         'onnx_data': openapi.Schema(type=openapi.TYPE_STRING, description="form-data submitted"),
     },

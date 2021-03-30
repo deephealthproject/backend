@@ -158,24 +158,33 @@ class InferenceSingleSerializer(serializers.ModelSerializer):
 
 
 class ModelSerializer(serializers.ModelSerializer):
-    onnx_url = serializers.URLField(required=False)
-    onnx_data = serializers.FileField(required=False)
-    dataset_id = serializers.PrimaryKeyRelatedField(required=False, queryset=models.Dataset.objects.all())
-
     class Meta:
         model = models.Model
-        fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id', 'celery_id']
-        read_only_fields = ['celery_id']
-
-    def validate(self, data):
-        if not data.get('onnx_url') and not data.get('onnx_data'):
-            raise serializers.ValidationError("At least one between `onnx_url` and `onnx_data` is needed.")
-        return data
+        fields = ['id', 'name', 'task_id']
 
 
 class ModelWeightsPermissionSerializer(PermissionSerializer):
     class Meta(PermissionSerializer.Meta):
         model = models.ModelWeightsPermission
+
+
+class ModelWeightsCreateSerializer(serializers.ModelSerializer):
+    onnx_url = serializers.URLField(required=False)
+    onnx_data = serializers.FileField(required=False)
+
+    class Meta:
+        model = models.ModelWeights
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'onnx_url', 'onnx_data', 'process_id']
+        extra_kwargs = {
+            'onnx_url': {'write_only': True},
+            'onnx_data': {'write_only': True},
+            'process_id': {'read_only': True},
+        }
+
+    def validate(self, data):
+        if not data.get('onnx_url') and not data.get('onnx_data'):
+            raise serializers.ValidationError("At least one between `onnx_url` and `onnx_data` fields is needed.")
+        return data
 
 
 class ModelWeightsSerializer(M2MSerializer):

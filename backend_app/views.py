@@ -367,74 +367,28 @@ class ModelViewSet(mixins.ListModelMixin,
         """
         return super().list(request)
 
-    @swagger_auto_schema(request_body=swagger.ModelViewSet_create_request,
-                         responses=swagger.ModelViewSet_create_response)
     def create(self, request, *args, **kwargs):
         """Create a new model
 
-        This API creates a new model which is defined through a ONNX file.
-        The ONNX can be uploaded using the `onnx_data` body field or can be retrieved by the backend providing the \
-        `onnx_url` field.
-        The `dataset_id` parameter indicates that the model has been already trained on a certain dataset. The backend \
-        will then create a new ModelWeight instance for these Model and Dataset.
+        Create a new model providing its name and related task_id.
         """
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            name = serializer.validated_data.get('name')
-            # task = serializer.validated_data.get('task_id')
-            model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'  # TODO this overwrite the file if exists
-            celery_id = None
-            response = None
-            if serializer.validated_data.get('onnx_url'):
-                # download onnx file from url
-                try:
-                    url = serializer.validated_data.pop('onnx_url')
-                    celery_id = onnx_download.delay(url, model_out_path)
-                    celery_id = celery_id.id
-                    response = {"result": "ok", "process_id": celery_id}
-                except requests.exceptions.RequestException:
-                    # URL malformed
-                    return Response({'error': 'URL is malformed'}, status=status.HTTP_400_BAD_REQUEST)
-            elif serializer.validated_data.get('onnx_data'):
-                onnx_data = serializer.validated_data.pop('onnx_data')
-                # onnx file was uploaded
-                onnx_data = onnx_data.read()
-                with open(model_out_path, 'wb') as f:
-                    f.write(onnx_data)
-                response = {"result": "ok"}
-            else:
-                return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            # Check for dataset_id parameter
-            # If given the current model has been already trained on that dataset
-            if serializer.validated_data.get('dataset_id'):
-                # Current onnx contains weight on the "dataset" dataset
-                dataset = serializer.validated_data.pop('dataset_id')
-                # Update the path and celery_id and save
-                model = serializer.save(location=model_out_path, celery_id=celery_id)
-                weight = models.ModelWeights.objects.create(
-                    location=model.location,
-                    name=model.name + '_ONNX',
-                    model_id=model,
-                    dataset_id=dataset
-                )
-                models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
-            else:
-                serializer.save(location=model_out_path, celery_id=celery_id)
-
-            headers = self.get_success_headers(serializer.data)
-            return Response(response, status=status.HTTP_201_CREATED, headers=headers)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request)
 
 
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           mixins.RetrieveModelMixin,
                           mixins.UpdateModelMixin,
+                          mixins.CreateModelMixin,
                           mixins.DestroyModelMixin,
                           viewsets.GenericViewSet):
     queryset = models.ModelWeights.objects.all()  # filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
     params = ['model_id']
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.ModelWeightsCreateSerializer
+        return serializers.ModelWeightsSerializer
 
     def get_queryset(self):
         if self.action in ['list']:
@@ -476,6 +430,49 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         except models.ModelWeights.DoesNotExist:
             return None
 
+    @swagger_auto_schema(request_body=swagger.ModelWeightsViewSet_create_request,
+                         responses=swagger.ModelWeightsViewSet_create_response)
+    def create(self, request, *args, **kwargs):
+        """Create a new model weight
+
+        This API creates a new model weight which is defined through a ONNX file.
+        The ONNX can be uploaded using the `onnx_data` body field or can be retrieved by the backend providing the \
+        `onnx_url` field.
+        The `dataset_id` optional parameter indicates that the model has been already trained on a certain dataset. \
+        The backend will then create a new ModelWeight instance for these Model and Dataset.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            name = serializer.validated_data.get('name')
+            model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'  # TODO this overwrite the file if exists
+            process_id = None
+            if serializer.validated_data.get('onnx_url'):
+                # download onnx file from url
+                try:
+                    url = serializer.validated_data.pop('onnx_url')
+                    process_id = onnx_download.delay(url, model_out_path)
+                    process_id = process_id.id
+                    response = {"result": "ok", "process_id": process_id}
+                except requests.exceptions.RequestException:
+                    # URL malformed
+                    return Response({'error': 'URL is malformed'}, status=status.HTTP_400_BAD_REQUEST)
+            elif serializer.validated_data.get('onnx_data'):
+                onnx_data = serializer.validated_data.pop('onnx_data')
+                # onnx file was uploaded
+                onnx_data = onnx_data.read()
+                with open(model_out_path, 'wb') as f:
+                    f.write(onnx_data)
+                response = {"result": "ok"}
+            else:
+                return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            weight = serializer.save(location=model_out_path, celery_id=process_id)
+            models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
+
+            headers = self.get_success_headers(serializer.data)
+            return Response(response, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @swagger_auto_schema(request_body=swagger.ModelWeightsViewSet_update_request)
     def update(self, request, *args, **kwargs):
         """Update an existing weight
@@ -494,7 +491,6 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         Delete a weight and its ONNX file.
         """
         check_permission(instance=self.get_object(), user=request.user, operation='delete')
-        # TODO Delete onnx file too
         return super().destroy(request, *args, **kwargs)
 
 
@@ -722,7 +718,7 @@ class StatusView(views.APIView):
             try:
                 index = lines.index("Reading dataset")
                 process_data = ','.join(lines_split[index + 1:last_line]) if full_return_string else lines_split[
-                                                                                                   index + 1:last_line]
+                                                                                                     index + 1:last_line]
             except ValueError:
                 # index does not find the string
                 process_data = ','.join(lines_split[:last_line]) if full_return_string else lines_split[:last_line]
