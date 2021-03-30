@@ -58,7 +58,7 @@ python manage.py createsuperuser
 python scripts/init_fixtures.py
 
 # Load fixtures into the DB (default entries)
-python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json modelweights.json auth_app.json
+python manage.py loaddata tasks.json property.json allowedproperty.json dataset.json model.json modelweights.json auth.json
 
 # Start the development server
 python manage.py runserver <my-server>:<my-server-port>

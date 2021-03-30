@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django_rest_passwordreset',
     'auth_app.apps.AuthAppConfig',
     'streamflow_app.apps.SFAppConfig',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

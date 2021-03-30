@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set PyECVL default version
-PYECVL_TAG="${1:-0.7.0}"
+PYECVL_TAG="${1:-0.10.0}"
 GPU="${2:-GPU}"
 PROC=$(nproc)
 
