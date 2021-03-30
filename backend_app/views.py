@@ -466,9 +466,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             else:
                 return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            weight = serializer.save(location=model_out_path, celery_id=process_id)
+            weight = serializer.save(location=model_out_path, process_id=process_id)
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
 
+            response['weight_id'] = weight.id
             headers = self.get_success_headers(serializer.data)
             return Response(response, status=status.HTTP_201_CREATED, headers=headers)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
