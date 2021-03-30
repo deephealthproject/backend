@@ -306,7 +306,7 @@ def onnx_download(url, model_out_path):
             f.write(r.content)
 
 
-class ModelStatusViewSet(views.APIView):
+class ModelWeightsStatusViewSet(views.APIView):
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
                                              "Pass a required UUID representing a model upload process.",
@@ -327,15 +327,15 @@ class ModelStatusViewSet(views.APIView):
             error = {'Error': f'Missing required parameter `process_id`'}
             return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
         process_id = self.request.query_params.get('process_id')
-        model = models.Model.objects.filter(celery_id=process_id)
-        if not model:
-            # already deleted model
+        weight = models.ModelWeights.objects.filter(process_id=process_id)
+        if not weight:
+            # Already deleted Weight
             return Response({'result': 'Process stopped before finishing or non existing.'},
                             status=status.HTTP_404_NOT_FOUND)
 
         response = serializers.ModelStatusResponse({
             'result': AsyncResult(process_id).status,
-            'process_type': 'Model uploading'
+            'process_type': 'Model Weight uploading'
         })
         return Response(response.data, status=status.HTTP_200_OK)
 
