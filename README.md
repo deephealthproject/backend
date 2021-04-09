@@ -6,14 +6,19 @@ The DeepHealth back-end interacts with the front-end, serving various APIs. It r
 
 API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger)
 
-DB schema: [https://drawsql.app/aimagelab/diagrams/api-0-2-0](https://drawsql.app/aimagelab/diagrams/api-0-2-0)
+### DB schema:
+![db_schema_base](imgs/db_schema_base.png)
+<details>
+<summary>Full DB schema:</summary>
+<img src="imgs/db_schema_full.png" alt="Full DB schema">
+</details>
 
 ## Installation
 
 ### Requirements
 - Python3.6+
 - git curl -- `sudo apt install git curl`
-- Requirements for **PyECVL 0.4.2+** and **PyEDDL 0.8.0+**
+- Requirements for **PyECVL 0.10.0+** and **PyEDDL 0.14.0+**
 
 Clone and install back-end with:
 
