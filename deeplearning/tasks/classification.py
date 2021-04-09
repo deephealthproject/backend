@@ -7,11 +7,12 @@ import numpy as np
 import pyecvl.ecvl as ecvl
 import pyeddl.eddl as eddl
 from celery import shared_task
+from pyeddl._core import eddl as eddl_core
 from pyeddl.tensor import Tensor
 
 from backend import settings
 from deeplearning import bindings
-from deeplearning.utils import Logger
+from deeplearning.utils import Logger, FINAL_LAYER
 
 
 @shared_task
@@ -24,6 +25,7 @@ def classificate(args):
     epochs = args.get('epochs')
     task = args.get('task')
     net = args.get('net')
+    layer_to_remove = net.get('layer_to_remove')
     dataset = args.get('dataset')
     weight = args.get('weight')
 
@@ -35,18 +37,7 @@ def classificate(args):
     # Save args to file
     logger.print_log('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
-    net = eddl.import_net_from_onnx_file(net.get('location'))
-
-    # if train:
-    #     size = [args.input_h, args.input_w]  # Height, width
-    # else:  # inference
-    #     # get size from input layers
-    #     size = net.layers[0].input.shape[2:]
-
-    # FIXME EDDL does not allow editing of input layers from onnx
-    # -> always use onnx size as input
-    size = net.layers[0].input.shape[2:]
-
+    size = [args.get('input_h'), args.get('input_w')]  # Height, width
     # Define augmentations for splits
     basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
     train_augs = basic_augs
@@ -73,18 +64,44 @@ def classificate(args):
     d = ecvl.DLDataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]),
                        *ctypes)
     num_classes = len(d.classes_)
-    # in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    # out = model(in_, num_classes)  # out is already softmaxed in classific models
-    # net = eddl.Model([in_], [out])
+
+    net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
 
     if train:
+        if layer_to_remove:
+            l_ = eddl.getLayer(net, layer_to_remove)
+            if num_classes != l_.output.shape[-1]:
+                # Classification layer must be replaced
+                net_layer_names = [l.name for l in net.layers]
+                layer_to_remove_index = net_layer_names.index(layer_to_remove)
+                # Remove all layers from the end to "layer_to_remove"
+                for i in range(len(net_layer_names) - 1, layer_to_remove_index - 1, -1):
+                    eddl.removeLayer(net, net_layer_names[i])
+                top = eddl.getLayer(net, net_layer_names[layer_to_remove_index - 1])
+                out = eddl.Softmax(eddl.Dense(top, num_classes, use_bias=True, name=FINAL_LAYER))
+
+                # Retrieve the name of the input layer
+                l_input = None
+                for l in net.layers:
+                    if isinstance(l, eddl_core.LInput):
+                        l_input = eddl.getLayer(net, l.name)
+                        break
+                assert l_input is not None
+                net = eddl.Model([l_input], [out])
+
         eddl.build(
             net,
             eddl.adam(args.get('lr')),
             [bindings.losses_binding.get(args.get('loss'))],
             [bindings.metrics_binding.get(args.get('metric'))],
-            eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU()
+            eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
+            False
         )
+
+        if layer_to_remove:
+            # Force initialization of new layers
+            eddl.initializeLayer(net, FINAL_LAYER)
+
     else:  # inference
         eddl.build(
             net,
@@ -123,8 +140,8 @@ def classificate(args):
                 losses = eddl.get_losses(net)
                 metrics = eddl.get_metrics(net)
 
-                logger.print_log(f'Train Epoch: {e + 1}/{epochs} [{i + 1}/{num_batches_train}]'
-                                 f'{net.losses[0].name}={losses[0]:.3f} - {net.metrics[0].name}={metrics[0]:.3f}')
+                logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{i + 1}/{num_batches_train}]'
+                                 f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
 
             eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
             logger.print_log('Weights saved')
@@ -143,9 +160,8 @@ def classificate(args):
                     losses = eddl.get_losses(net)
                     metrics = eddl.get_metrics(net)
                     logger.print_log(
-                        f'Validation Epoch: {e + 1}/{epochs} [{i + 1}/{num_batches_train}] {net.lout[0].name}'
-                        f'({net.losses[0].name}={losses[0]:1.3f},'
-                        f'{net.metrics[0].name}={metrics[0]:1.3f})')
+                        f'Validation - epoch [{e + 1}/{epochs}] - batch [{i + 1}/{num_batches_val}]'
+                        f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
     else:
         d.SetSplit(ecvl.SplitType.test)
         num_samples_test = len(d.GetSplit())
@@ -157,7 +173,7 @@ def classificate(args):
             images.div_(255.0)
             eddl.forward(net, [images])
 
-            logger.print_log(f'Inference Batch {b + 1}/{num_batches_test}')
+            logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
             # SaveSave network predictions
             for i in range(batch_size):
                 pred = np.array(eddl.getOutput(eddl.getOut(net)[0]).select([str(i)]), copy=False)

@@ -174,11 +174,10 @@ class ModelWeightsCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'model_id', 'dataset_id', 'onnx_url', 'onnx_data', 'process_id']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'layer_to_remove', 'onnx_url', 'onnx_data']
         extra_kwargs = {
             'onnx_url': {'write_only': True},
             'onnx_data': {'write_only': True},
-            'process_id': {'read_only': True},
         }
 
     def validate(self, data):
@@ -194,7 +193,11 @@ class ModelWeightsSerializer(M2MSerializer):
 
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users', 'process_id',
+                  'layer_to_remove']
+        extra_kwargs = {
+            'process_id': {'read_only': True},
+        }
 
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
@@ -316,10 +319,9 @@ class TrainingSerializer(serializers.ModelSerializer):
 
 class TrainSerializer(serializers.Serializer):
     dataset_id = serializers.IntegerField()
-    model_id = serializers.IntegerField()
+    weights_id = serializers.IntegerField()
     project_id = serializers.IntegerField()
     properties = PropertyTrainSerializer(many=True)
-    weights_id = serializers.IntegerField(allow_null=True)
 
     task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
     env = sf_serializers.SFEnvSerializer(required=False)
@@ -327,8 +329,9 @@ class TrainSerializer(serializers.Serializer):
     def validate(self, data):
         if data.get('task_manager') == 'STREAMFLOW' and data.get('env') is None:
             # there must be env
-            raise serializers.ValidationError(
-                {'task_manager': f"`STREAMFLOW` task_manager also requires the `env` parameters."})
+            resp = {'task_manager': f"`STREAMFLOW` task_manager also requires the `env` parameters."}
+            raise serializers.ValidationError(resp)
+
         return data
 
 

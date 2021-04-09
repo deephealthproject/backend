@@ -132,19 +132,22 @@ ModelWeightsViewSet_update_request = openapi.Schema(
 )
 
 ModelWeightsViewSet_list_retrieve_body = {
-    "id": 384,
-    "name": "Pneumothorax",
-    "model_id": 5,
-    "dataset_id": 152,
+    "id": 8,
+    "name": "ResNet50-pytorch-imagenet",
+    "model_id": 4,
+    "dataset_id": 3,
     "pretrained_on": None,
-    "public": True,
+    "public": False,
     "users": [
         {
             "username": "dhtest",
             "permission": "OWN"
         }
-    ]
+    ],
+    "process_id": "90f6747e-9bca-4c2d-887a-10fdaddbe5d2",
+    "layer_to_remove": "Gemm_174"
 }
+
 ModelWeightsViewSet_list_request = {
     '200': openapi.Response('Successful operation',
                             serializers.ModelWeightsSerializer(many=True),
@@ -162,8 +165,8 @@ ModelWeightsViewSet_retrieve_request = {
 ModelStatusView_get_response = {
     '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
         "application/json": {
+            'process_type': 'Model Weight downloading',
             "result": "SUCCESS",
-            'process_type': 'Model uploading'
         }
     })
 }

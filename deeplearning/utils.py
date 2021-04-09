@@ -2,8 +2,7 @@ import itertools
 
 from backend import settings
 
-
-# from django.forms.models import model_to_dict
+FINAL_LAYER = 'final_layer'
 
 
 class DotDict(dict):
@@ -40,13 +39,9 @@ def createConfig(task, hyperparams, mode: str):
         return False
 
     if mode == 'training':
-        if task.modelweights_id.pretrained_on:  # Finetuning on an existing weight
-            net = model_to_dict(task.modelweights_id.pretrained_on, fields=['id', 'location'])
-        else:  # Train from scratch
-            net = model_to_dict(task.modelweights_id.model_id, fields=['id', 'location'])
-
+        # Finetuning on an existing weight or train from scratch using that weight
         config.update({
-            'net': net,
+            'net': model_to_dict(task.modelweights_id.pretrained_on, fields=['id', 'location', 'layer_to_remove']),
             'dataset': model_to_dict(task.modelweights_id.dataset_id, fields=['id', 'path', 'ctype', 'ctype_gt']),
             'task': model_to_dict(task, fields=['id', 'logfile']),
             'lr': abs(float(hyperparams.get('Learning rate'))),
@@ -57,6 +52,7 @@ def createConfig(task, hyperparams, mode: str):
             'split': 'training',
         })
     else:
+        # Inference
         config.update({
             'net': model_to_dict(task.modelweights_id, fields=['id', 'location']),
             'dataset': model_to_dict(task.dataset_id, fields=['id', 'path', 'ctype', 'ctype_gt']),

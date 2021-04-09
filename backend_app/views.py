@@ -19,7 +19,7 @@ from rest_framework.response import Response
 
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
-from deeplearning.utils import createConfig
+from deeplearning.utils import FINAL_LAYER, createConfig
 
 
 def check_permission(instance, user, operation):
@@ -334,8 +334,8 @@ class ModelWeightsStatusViewSet(views.APIView):
                             status=status.HTTP_404_NOT_FOUND)
 
         response = serializers.ModelStatusResponse({
-            'result': AsyncResult(process_id).status,
-            'process_type': 'Model Weight uploading'
+            'process_type': 'Model Weight downloading',
+            'result': AsyncResult(process_id).status
         })
         return Response(response.data, status=status.HTTP_200_OK)
 
@@ -383,7 +383,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           viewsets.GenericViewSet):
     queryset = models.ModelWeights.objects.all()  # filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
-    params = ['model_id']
+    params = ['model_id', 'dataset_id']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -395,18 +395,30 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             # Return public weights and the ones with own/view permission
             user = self.request.user
             model_id = self.request.query_params.get('model_id')
+            dataset_id = self.request.query_params.get('dataset_id')
             self.queryset = self.queryset.filter(model_id=model_id, public=True)
             # Get weights of current user
             q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False)
             self.queryset = (self.queryset | q_perm).distinct()
+
+            # Remove weights which have 'layer_to_remove' set to NULL and which have not been trained on
+            # `dataset_id` because they can be finetuned only on the same dataset.
+            from django.db.models import Q
+            self.queryset = self.queryset.filter(Q(layer_to_remove__isnull=False) | Q(dataset_id=dataset_id))
             return self.queryset
         else:
             return super().get_queryset()
 
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY,
-                                             "Return the modelweights obtained on `model_id` model.",
-                                             type=openapi.TYPE_INTEGER, required=False)],
+                                             "Return the weights obtained on `model_id` model.",
+                                             type=openapi.TYPE_INTEGER,
+                                             required=not models.ModelWeights._meta.get_field('model_id').null),
+                           openapi.Parameter('dataset_id', openapi.IN_QUERY,
+                                             "Return the weights trained on the specified `dataset_id`"
+                                             " or suitable for such a dataset.",
+                                             type=openapi.TYPE_INTEGER, required=True)
+                           ],
         responses=swagger.ModelWeightsViewSet_list_request)
     def list(self, request, *args, **kwargs):
         """Returns the available Neural Network models
@@ -806,9 +818,8 @@ class TrainViewSet(views.APIView):
         """Starts the training of a (possibly pre-trained) model on a dataset
 
         This is the main entry point to start the training of a model on a dataset. \
-        It is mandatory to specify a model to be trained and a dataset.
-        When providing a `weights_id`, the training starts from the pre-trained model.
-
+        It is mandatory to specify a weight and a dataset.
+        The `weights_id` field specifies which weight should be used for the training/finetuning.
 
         The `task_manager` field (default: _CELERY_) chooses which "task manager" employ between Celery and \
         StreamFlow. The optional `env` parameter is mandatory when _STREAMFLOW_ is used as `task_manager`. \
@@ -821,30 +832,39 @@ class TrainViewSet(views.APIView):
             # Create a new modelweights and start training
             weight = models.ModelWeights()
             weight.dataset_id_id = serializer.validated_data['dataset_id']
-            weight.model_id_id = serializer.validated_data['model_id']
+            weight.pretrained_on_id = serializer.validated_data['weights_id']
+            # Inherit model and layer_to_remove from weight used as pretraining
+            weight.model_id = weight.pretrained_on.model_id
+            if weight.pretrained_on.dataset_id == weight.dataset_id:
+                # Same datasets between pretraining and current means that
+                # last layer is already trained for such a dataset
+                # weight.layer_to_remove inherited from parent and not changed in onnx
+                # NB layer_to_remove could also be null
+                weight.layer_to_remove = weight.pretrained_on.layer_to_remove
+            elif weight.pretrained_on.layer_to_remove is not None:
+                # Otherwise last layer will be replaced
+                # weight.layer_to_remove replaced with a new one named as FINAL_LAYER var
+                weight.layer_to_remove = FINAL_LAYER
+            else:
+                error = {"Error": f"The Model weight with id `{weight.pretrained_on_id}` cannot be used with dataset"
+                                  f" {weight.dataset_id}."}
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            if serializer.validated_data['weights_id']:
-                weight.pretrained_on_id = serializer.validated_data['weights_id']
+            # Does the pretraining really exist?
+            if not models.ModelWeights.objects.filter(id=weight.pretrained_on_id).exists() and not weight.public:
+                error = {"Error": f"Model weight with id `{weight.pretrained_on_id}` does not exist."}
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-                # Does pretraining really exist?
-                if not models.ModelWeights.objects.filter(id=weight.pretrained_on_id).exists() and not weight.public:
-                    error = {"Error": f"Model weight with id `{weight.pretrained_on_id}` does not exist"}
-                    return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if current user can use an existing weight as pretraining
-                if not models.ModelWeightsPermission.objects.filter(modelweight_id=weight.pretrained_on_id,
-                                                                    user=user).exists() \
-                        and not weight.pretrained_on.public:
-                    error = {
-                        "Error": f"The {user.username} user has no permission to access the chosen pretraining weight"}
-                    return Response(error, status=status.HTTP_401_UNAUTHORIZED)
+            # Check if current user can use an existing weight as pretraining
+            if not models.ModelWeightsPermission.objects.filter(modelweight_id=weight.pretrained_on_id,
+                                                                user=user).exists() \
+                    and not weight.pretrained_on.public:
+                error = {
+                    "Error": f"The {user.username} user has no permission to access the chosen pretraining weight"}
+                return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
             if not models.Dataset.objects.filter(id=weight.dataset_id_id, is_single_image=False).exists():
                 error = {"Error": f"Dataset with id `{weight.dataset_id_id}` does not exist"}
-                return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-            if not models.Model.objects.filter(id=weight.model_id_id).exists():
-                error = {"Error": f"Model with id `{weight.model_id_id}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             if not models.Project.objects.filter(id=serializer.validated_data['project_id']).exists():
@@ -920,10 +940,10 @@ class TrainViewSet(views.APIView):
                     error = {"Error": f"Property `{p['name']}` does not exist"}
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
                 property = queryset[0]
-                ts.property_id = property
-                ts.training_id = training
-                ts.value = str(p['value'])
-                ts.save()
+                ts = models.TrainingSetting.objects.create(
+                    property_id=property,
+                    training_id=training,
+                    value=str(p['value']))
                 hyperparams[property.name] = ts.value
 
             config = createConfig(training, hyperparams, 'training')

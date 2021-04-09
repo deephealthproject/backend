@@ -118,6 +118,7 @@ class Model(models.Model):
 class ModelWeights(models.Model):
     location = models.CharField(max_length=2048)
     name = models.CharField(max_length=200)
+    layer_to_remove = models.CharField(max_length=200, null=True, blank=True)
 
     model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
     dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
@@ -130,7 +131,7 @@ class ModelWeights(models.Model):
     process_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
 
     class Meta:
-        ordering = ['id']
+        ordering = ('model_id', 'id',)
         verbose_name_plural = "Model Weights"
 
     def __str__(self):
