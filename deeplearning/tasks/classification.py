@@ -39,21 +39,21 @@ def classificate(args):
 
     size = [args.get('input_h'), args.get('input_w')]  # Height, width
     # Define augmentations for splits
-    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
+    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size), ecvl.AugToFloat32(255)])
     train_augs = basic_augs
     val_augs = basic_augs
     test_augs = basic_augs
     if args.get('train_augs'):
         train_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.get('train_augs'))
+            ecvl.AugmentationFactory.create(args.get('train_augs'))
         ])
     if args.get('val_augs'):
         val_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.get('val_augs'))
+            ecvl.AugmentationFactory.create(args.get('val_augs'))
         ])
     if args.get('test_augs'):
         test_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.get('test_augs'))
+            ecvl.AugmentationFactory.create(args.get('test_augs'))
         ])
 
     logger.print_log('Reading dataset')
@@ -134,7 +134,6 @@ def classificate(args):
             d.ResetCurrentBatch()
             for i in range(num_batches_train):
                 d.LoadBatch(images, labels)
-                images.div_(255.0)
                 eddl.train_batch(net, [images], [labels], indices)
 
                 losses = eddl.get_losses(net)
@@ -154,7 +153,6 @@ def classificate(args):
 
                 for i in range(num_batches_val):
                     d.LoadBatch(images, labels)
-                    images.div_(255.0)
                     eddl.eval_batch(net, [images], [labels], indices)
 
                     losses = eddl.get_losses(net)
@@ -170,7 +168,6 @@ def classificate(args):
 
         for b in range(num_batches_test):
             d.LoadBatch(images)
-            images.div_(255.0)
             eddl.forward(net, [images])
 
             logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
