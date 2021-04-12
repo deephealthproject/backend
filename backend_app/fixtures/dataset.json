@@ -8,7 +8,7 @@
       "is_single_image": false,
       "task_id": 1,
       "public": true,
-      "ctype": "ecvl.ColorType.GRAY"
+      "ctype": "GRAY"
     }
   },
   {
@@ -20,8 +20,8 @@
       "is_single_image": false,
       "task_id": 2,
       "public": true,
-      "ctype": "ecvl.ColorType.RGB",
-      "ctype_gt": "ecvl.ColorType.GRAY"
+      "ctype": "RGB",
+      "ctype_gt": "GRAY"
     }
   },
   {
@@ -33,7 +33,7 @@
       "is_single_image": false,
       "task_id": 1,
       "public": true,
-      "ctype": "ecvl.ColorType.RGB"
+      "ctype": "RGB"
     }
   },
   {
@@ -45,8 +45,8 @@
       "is_single_image": false,
       "task_id": 2,
       "public": true,
-      "ctype": "ecvl.ColorType.GRAY",
-      "ctype_gt": "ecvl.ColorType.GRAY"
+      "ctype": "GRAY",
+      "ctype_gt": "GRAY"
     }
   }
 ]
