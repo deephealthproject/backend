@@ -50,8 +50,10 @@ def guess_extension(ftype):
 
 def do_inference(request, serializer):
     uuid4 = uuid.uuid4().hex + '.log'
-    weight = serializer.validated_data['modelweights_id']
+    # Dataset could be a normal dataset or a fake single image one
+    dataset = serializer.validated_data['dataset_id']
     project = serializer.validated_data['project_id']
+    weight = serializer.validated_data['modelweights_id']
 
     user = request.user
 
@@ -62,8 +64,8 @@ def do_inference(request, serializer):
         return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
     # Check if current user can use the dataset
-    if not models.DatasetPermission.objects.filter(dataset=weight.dataset_id, user=user).exists() and \
-            not weight.dataset_id.public:
+    if not models.DatasetPermission.objects.filter(dataset=dataset, user=user).exists() and \
+            not dataset.public:
         error = {"Error": f"The {user.username} user has no permission to access the chosen dataset"}
         return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
