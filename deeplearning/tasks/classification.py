@@ -12,7 +12,7 @@ from pyeddl.tensor import Tensor
 
 from backend import settings
 from deeplearning import bindings
-from deeplearning.utils import Logger, FINAL_LAYER
+from deeplearning.utils import FINAL_LAYER, Logger
 
 
 @shared_task
@@ -39,10 +39,9 @@ def classificate(args):
 
     size = [args.get('input_h'), args.get('input_w')]  # Height, width
     # Define augmentations for splits
-    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size), ecvl.AugToFloat32(255)])
-    train_augs = basic_augs
-    val_augs = basic_augs
-    test_augs = basic_augs
+    train_augs = None
+    val_augs = None
+    test_augs = None
     if args.get('train_augs'):
         train_augs = ecvl.SequentialAugmentationContainer([
             ecvl.AugmentationFactory.create(args.get('train_augs'))
@@ -109,6 +108,7 @@ def classificate(args):
             cs=eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
             init_weights=False
         )
+
     net.resize(batch_size)  # resize manually since we don't use "fit"
     eddl.summary(net)
 
@@ -162,24 +162,62 @@ def classificate(args):
                         f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
     else:
         d.SetSplit(ecvl.SplitType.test)
+        # d.SetSplit(ecvl.SplitType.validation)
         num_samples_test = len(d.GetSplit())
         num_batches_test = num_samples_test // batch_size
+
+        # Check if this dataset has labels or not
+        split_samples_np = np.take(d.samples_, d.GetSplit())
+        split_samples_have_labels = all(s.label_ is not None or s.label_path_ is not None for s in split_samples_np)
+
         preds = np.empty((0, num_classes), np.float64)
+        metric_fn = eddl.getMetric(bindings.metrics_binding.get(args.get('metric')))
+        out_layer = eddl.getOut(net)[0]
+        values = np.zeros(num_batches_test)
 
-        for b in range(num_batches_test):
-            d.LoadBatch(images)
-            eddl.forward(net, [images])
+        if split_samples_have_labels:
+            # The dataset has labels for the images, we can show the metric over the predictions
+            for b in range(num_batches_test):
+                d.LoadBatch(images, labels)
+                eddl.forward(net, [images])
+                # tmp = images.select(["0"])
+                # tmp.mult_(255)
+                # tmp.normalize_(0., 255.)
+                # tmp.save(f"test.png")
 
-            logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
-            # SaveSave network predictions
-            for i in range(batch_size):
-                pred = np.array(eddl.getOutput(eddl.getOut(net)[0]).select([str(i)]), copy=False)
-                # gt = np.argmax(np.array(labels)[indices])
-                # pred = np.append(pred, gt).reshape((1, num_classes + 1))
-                preds = np.append(preds, pred, axis=0)
-                pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
-                # print(f'{pred_name};{pred}')
-                outputfile.write(f'{pred_name};{pred.tolist()}\n')
+                output = eddl.getOutput(out_layer)
+                value = metric_fn.value(labels, output)
+                values[b] = value
+
+                logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}] -'
+                                 f' metric={np.mean(values[:b + 1] / batch_size):.3f}')
+
+                # Save network predictions
+                for i in range(batch_size):
+                    pred = np.array(output.select([str(i)]), copy=False)
+                    # gt = np.argmax(np.array(labels)[indices])
+                    # pred = np.append(pred, gt).reshape((1, num_classes + 1))
+                    preds = np.append(preds, pred, axis=0)
+                    pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
+                    # print(f'{pred_name};{pred}')
+                    outputfile.write(f'{pred_name};{pred.tolist()}\n')
+            logger.print_log(f'Inference - metric={np.mean(values / batch_size):.3f}')
+        else:
+            for b in range(num_batches_test):
+                d.LoadBatch(images)
+                eddl.forward(net, [images])
+
+                logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
+                # SaveSave network predictions
+                output = eddl.getOutput(out_layer)
+                for i in range(batch_size):
+                    pred = np.array(output.select([str(i)]), copy=False)
+                    # gt = np.argmax(np.array(labels)[indices])
+                    # pred = np.append(pred, gt).reshape((1, num_classes + 1))
+                    preds = np.append(preds, pred, axis=0)
+                    pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
+                    # print(f'{pred_name};{pred}')
+                    outputfile.write(f'{pred_name};{pred.tolist()}\n')
         outputfile.close()
     logger.print_log('<done>')
     logger.close()
