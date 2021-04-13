@@ -383,7 +383,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                           viewsets.GenericViewSet):
     queryset = models.ModelWeights.objects.all()  # filter(public=True)
     serializer_class = serializers.ModelWeightsSerializer
-    params = ['model_id', 'dataset_id']
+    params = ['model_id']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -395,36 +395,36 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             # Return public weights and the ones with own/view permission
             user = self.request.user
             model_id = self.request.query_params.get('model_id')
-            dataset_id = self.request.query_params.get('dataset_id')
             self.queryset = self.queryset.filter(model_id=model_id, public=True)
             # Get weights of current user
             q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False)
             self.queryset = (self.queryset | q_perm).distinct()
 
-            # Remove weights which have 'layer_to_remove' set to NULL and which have not been trained on
-            # `dataset_id` because they can be finetuned only on the same dataset.
-            from django.db.models import Q
-            self.queryset = self.queryset.filter(Q(layer_to_remove__isnull=False) | Q(dataset_id=dataset_id))
+            if self.request.query_params.get('dataset_id'):
+                dataset_id = self.request.query_params.get('dataset_id')
+
+                # Remove weights which have 'layer_to_remove' set to NULL and which have not been trained on
+                # `dataset_id` because they can be finetuned only on the same dataset.
+                self.queryset = self.queryset.filter(Q(layer_to_remove__isnull=False) | Q(dataset_id=dataset_id))
             return self.queryset
         else:
             return super().get_queryset()
 
     @swagger_auto_schema(
-        manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY,
-                                             "Return the weights obtained on `model_id` model.",
-                                             type=openapi.TYPE_INTEGER,
-                                             required=not models.ModelWeights._meta.get_field('model_id').null),
-                           openapi.Parameter('dataset_id', openapi.IN_QUERY,
-                                             "Return the weights trained on the specified `dataset_id`"
-                                             " or suitable for such a dataset.",
-                                             type=openapi.TYPE_INTEGER, required=True)
-                           ],
-        responses=swagger.ModelWeightsViewSet_list_request)
+        manual_parameters=[
+            openapi.Parameter('model_id', openapi.IN_QUERY, "Return the weights obtained on `model_id` model.",
+                              type=openapi.TYPE_INTEGER,
+                              required=not models.ModelWeights._meta.get_field('model_id').null),
+            openapi.Parameter('dataset_id', openapi.IN_QUERY, "Return the weights trained on the specified `dataset_id`"
+                                                              " or suitable for such a dataset.",
+                              type=openapi.TYPE_INTEGER,
+                              required=False)
+        ], responses=swagger.ModelWeightsViewSet_list_request)
     def list(self, request, *args, **kwargs):
-        """Returns the available Neural Network models
+        """Returns the available Neural Network model weights
 
-        When 'use pre-trained' is selected, it is possible to query the backend passing a `model_id` to obtain a list
-        of dataset on which it was pretrained.
+        The `model_id` parameter filters weights for such a model, while the optional `dataset_id` one \
+        excludes datasets which are not suitable for training (e.g. dataset with layer_to_remove field empty)
         """
         return super().list(request, *args, **kwargs)
 
