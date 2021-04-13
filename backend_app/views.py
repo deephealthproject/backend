@@ -128,8 +128,10 @@ class DatasetViewSet(mixins.ListModelMixin,
         url = serializer.validated_data['path']
         dataset_name = serializer.validated_data['name']
         if Path(f'{settings.DATASETS_DIR}/{dataset_name}.yml').exists():
-            return Response({'error': f'The dataset `{dataset_name}` already exists'},
-                            status=status.HTTP_400_BAD_REQUEST)  # TODO delete the file when delete the object
+            # If file already exists append a suffix
+            dataset_name = f'{dataset_name}_{uuid.uuid4().hex}'
+        d = None
+        yaml_content = None
         try:
             dataset_out_path = f'{settings.DATASETS_DIR}/{dataset_name}.yml'
             r = requests.get(url, allow_redirects=True)
@@ -139,20 +141,29 @@ class DatasetViewSet(mixins.ListModelMixin,
                     yaml.dump(yaml_content, f, Dumper=utils.MyDumper, sort_keys=False)
 
                 # Update the path
-                serializer.save(path=dataset_out_path)
-
-                headers = self.get_success_headers(serializer.data)
-                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+                d = serializer.save(path=dataset_out_path)
         except (requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema):
             # Local YAML file
             if os.path.isfile(url):
-                serializer.save()
-                headers = self.get_success_headers(serializer.data)
-                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+                d = serializer.save()
         except requests.exceptions.RequestException:
             # URL malformed
             return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if d is None:
+            return Response({'error': 'URL malformed'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not yaml_content:
+            # Read yaml and look for classes
+            yaml_content = yaml.load(d.path, Loader=yaml.FullLoader)
+
+        # Save the classes if found
+        if yaml_content.get('classes'):
+            d.classes = ','.join(yaml_content.get('classes'))
+            d.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def destroy(self, request, *args, **kwargs):
         """Delete a dataset

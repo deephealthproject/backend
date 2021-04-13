@@ -58,6 +58,7 @@ class AllowedProperty(models.Model):
 class Dataset(models.Model):
     name = models.CharField(max_length=32)
     path = models.CharField(max_length=2048)
+    classes = models.TextField(null=True, blank=True)
 
     is_single_image = models.BooleanField(default=False)
     task_id = models.ForeignKey('Task', on_delete=models.PROTECT)

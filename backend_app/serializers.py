@@ -96,10 +96,11 @@ class DatasetSerializer(M2MSerializer):
 
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name', 'path', 'task_id', 'users', 'public', 'ctype', 'ctype_gt']
+        fields = ['id', 'name', 'path', 'task_id', 'users', 'public', 'ctype', 'ctype_gt', 'classes']
         extra_kwargs = {
             'ctype': {'required': False},
             'ctype_gt': {'required': False},
+            'classes': {'read_only': True},
         }
 
     def create(self, validated_data):

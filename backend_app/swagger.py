@@ -59,6 +59,7 @@ DatasetViewSet_create_response = {
                                     ],
                                     "ctype": "RGB",
                                     "ctype_gt": "GRAY",
+                                    "classes": "0,1,2,3,4,5,6,7"
                                 }
                             }),
     '400': openapi.Response('Something is wrong in the request. Details in `error`.',
