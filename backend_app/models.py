@@ -38,8 +38,8 @@ class AllowedProperty(models.Model):
     model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
     dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
 
-    allowed_value = models.CharField(max_length=200, null=True, blank=True)
-    default_value = models.CharField(max_length=200, null=True, blank=True)
+    allowed_value = models.TextField(null=True, blank=True)
+    default_value = models.TextField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -48,7 +48,7 @@ class AllowedProperty(models.Model):
             UniqueConstraint(fields=['property_id', 'model_id'], condition=Q(dataset_id=None),
                              name='unique_without_optional'),
         ]
-        ordering = ['model_id']
+        ordering = ['model_id', 'id']
         verbose_name_plural = "Allowed properties"
 
     def __str__(self):
@@ -167,8 +167,8 @@ class ProjectPermission(models.Model):
 class Property(models.Model):
     name = models.CharField(max_length=50)
     type = models.CharField(max_length=50)
-    default = models.CharField(max_length=50, null=True, blank=True)
-    values = models.CharField(max_length=1000, null=True, blank=True)
+    default = models.TextField(null=True, blank=True)
+    values = models.TextField(null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
