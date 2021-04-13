@@ -80,6 +80,39 @@
     "model": "backend_app.allowedproperty",
     "pk": 8,
     "fields": {
+      "property_id": 8,
+      "model_id": 1,
+      "dataset_id": 1,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(28,28) interp=\"cubic\"\n    AugRotate angle=[-5,5]\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 9,
+    "fields": {
+      "property_id": 9,
+      "model_id": 1,
+      "dataset_id": 1,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(28,28) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 10,
+    "fields": {
+      "property_id": 10,
+      "model_id": 1,
+      "dataset_id": 1,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(28,28) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 11,
+    "fields": {
       "property_id": 1,
       "model_id": 2,
       "dataset_id": null,
@@ -89,7 +122,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 9,
+    "pk": 12,
     "fields": {
       "property_id": 2,
       "model_id": 2,
@@ -100,7 +133,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 10,
+    "pk": 13,
     "fields": {
       "property_id": 4,
       "model_id": 2,
@@ -111,7 +144,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 11,
+    "pk": 14,
     "fields": {
       "property_id": 5,
       "model_id": 2,
@@ -122,7 +155,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 12,
+    "pk": 15,
     "fields": {
       "property_id": 6,
       "model_id": 2,
@@ -133,7 +166,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 13,
+    "pk": 16,
     "fields": {
       "property_id": 7,
       "model_id": 2,
@@ -144,7 +177,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 14,
+    "pk": 17,
     "fields": {
       "property_id": 3,
       "model_id": 2,
@@ -155,7 +188,40 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 15,
+    "pk": 18,
+    "fields": {
+      "property_id": 8,
+      "model_id": 2,
+      "dataset_id": 3,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(224,224) interp=\"cubic\"\n    AugMirror p=0.5\n    AugFlip p=0.5\n    AugRotate angle=[-5,5]\n    AugAdditivePoissonNoise lambda=[0,0.51]\n    AugGammaContrast gamma=[0.5,1.5]\n    AugGaussianBlur sigma=[0.0,0.8]\n    AugCoarseDropout p=[0,0.03] drop_size=[0.0,0.05] per_channel=0.25\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 19,
+    "fields": {
+      "property_id": 9,
+      "model_id": 2,
+      "dataset_id": 3,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(224,224) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 20,
+    "fields": {
+      "property_id": 10,
+      "model_id": 2,
+      "dataset_id": 3,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(224,224) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 21,
     "fields": {
       "property_id": 1,
       "model_id": 3,
@@ -166,7 +232,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 16,
+    "pk": 22,
     "fields": {
       "property_id": 2,
       "model_id": 3,
@@ -177,7 +243,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 17,
+    "pk": 23,
     "fields": {
       "property_id": 4,
       "model_id": 3,
@@ -188,7 +254,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 18,
+    "pk": 24,
     "fields": {
       "property_id": 5,
       "model_id": 3,
@@ -199,7 +265,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 19,
+    "pk": 25,
     "fields": {
       "property_id": 3,
       "model_id": 3,
@@ -210,7 +276,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 20,
+    "pk": 26,
     "fields": {
       "property_id": 6,
       "model_id": 3,
@@ -221,7 +287,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 21,
+    "pk": 27,
     "fields": {
       "property_id": 7,
       "model_id": 3,
@@ -232,7 +298,7 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 22,
+    "pk": 28,
     "fields": {
       "property_id": 6,
       "model_id": 3,
@@ -243,13 +309,46 @@
   },
   {
     "model": "backend_app.allowedproperty",
-    "pk": 23,
+    "pk": 29,
     "fields": {
       "property_id": 7,
       "model_id": 3,
       "dataset_id": 4,
       "allowed_value": null,
       "default_value": "512"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 30,
+    "fields": {
+      "property_id": 8,
+      "model_id": 3,
+      "dataset_id": 2,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugMirror p=0.5\n    AugFlip p=0.5\n    AugRotate angle=[-5,5]\n    AugAdditivePoissonNoise lambda=[0,0.51]\n    AugGammaContrast gamma=[0.5,1.5]\n    AugGaussianBlur sigma=[0.0,0.8]\n    AugCoarseDropout p=[0,0.03] drop_size=[0.0,0.05] per_channel=0.25\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 31,
+    "fields": {
+      "property_id": 9,
+      "model_id": 3,
+      "dataset_id": 2,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+    }
+  },
+  {
+    "model": "backend_app.allowedproperty",
+    "pk": 32,
+    "fields": {
+      "property_id": 10,
+      "model_id": 3,
+      "dataset_id": 2,
+      "allowed_value": null,
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
     }
   }
 ]
