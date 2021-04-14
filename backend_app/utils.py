@@ -57,6 +57,11 @@ def do_inference(request, serializer):
 
     user = request.user
 
+    # Check if dataset and weight is for same task
+    if dataset.task_id != weight.dataset_id.task_id:
+        error = {"Error": f"The dataset and weight chosen are not for the same task."}
+        return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
     # Check if current user can use an existing weight
     if not models.ModelWeightsPermission.objects.filter(modelweight=weight, user=user).exists() and \
             not weight.public:
