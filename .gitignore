@@ -1,5 +1,6 @@
 # Project files
 venv/
+env/
 config*
 *.sqlite*
 
