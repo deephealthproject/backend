@@ -39,9 +39,10 @@ def classificate(args):
 
     size = [args.get('input_h'), args.get('input_w')]  # Height, width
     # Define augmentations for splits
-    train_augs = None
-    val_augs = None
-    test_augs = None
+    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size, ecvl.InterpolationType.cubic)])
+    train_augs = basic_augs
+    val_augs = basic_augs
+    test_augs = basic_augs
     if args.get('train_augs'):
         train_augs = ecvl.SequentialAugmentationContainer([
             ecvl.AugmentationFactory.create(args.get('train_augs'))
