@@ -7,10 +7,10 @@ The DeepHealth back-end interacts with the front-end, serving various APIs. It r
 API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger)
 
 ### DB schema:
-![db_schema_base](imgs/db_schema_base.png)
+![db_schema_base](imgs/db_schema_base.svg)
 <details>
 <summary>Full DB schema:</summary>
-<img src="imgs/db_schema_full.png" alt="Full DB schema">
+<img src="imgs/db_schema_full.svg" alt="Full DB schema">
 </details>
 
 ## Installation
