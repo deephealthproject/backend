@@ -38,11 +38,11 @@ def classificate(args):
     logger.print_log('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
     size = [args.get('input_h'), args.get('input_w')]  # Height, width
+
     # Define augmentations for splits
-    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size, ecvl.InterpolationType.cubic)])
-    train_augs = basic_augs
-    val_augs = basic_augs
-    test_augs = basic_augs
+    train_augs = None
+    val_augs = None
+    test_augs = None
     if args.get('train_augs'):
         train_augs = ecvl.SequentialAugmentationContainer([
             ecvl.AugmentationFactory.create(args.get('train_augs'))
@@ -61,8 +61,9 @@ def classificate(args):
     ctypes = [eval(dataset.get('ctype'))]
     if dataset.get('ctype_gt'):
         ctypes.append(eval(dataset.get('ctype_gt')))
-    d = ecvl.DLDataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]),
-                       *ctypes)
+
+    dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
+    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
     num_classes = len(d.classes_)
 
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
@@ -75,8 +76,8 @@ def classificate(args):
                 net_layer_names = [l.name for l in net.layers]
                 layer_to_remove_index = net_layer_names.index(layer_to_remove)
                 # Remove all layers from the end to "layer_to_remove"
-                for i in range(len(net_layer_names) - 1, layer_to_remove_index - 1, -1):
-                    eddl.removeLayer(net, net_layer_names[i])
+                for b in range(len(net_layer_names) - 1, layer_to_remove_index - 1, -1):
+                    eddl.removeLayer(net, net_layer_names[b])
                 top = eddl.getLayer(net, net_layer_names[layer_to_remove_index - 1])
                 out = eddl.Softmax(eddl.Dense(top, num_classes, use_bias=True, name=FINAL_LAYER))
 
@@ -105,7 +106,7 @@ def classificate(args):
     else:  # inference
         eddl.build(
             net,
-            o=eddl.adam(args.get('lr')),
+            eddl.adam(args.get('lr')),
             cs=eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
             init_weights=False
         )
@@ -119,6 +120,7 @@ def classificate(args):
 
     logger.print_log(f'Starting {args.get("mode")}')
     if train:
+        eddl.set_mode(net, 1)
         num_samples_train = len(d.GetSplit(ecvl.SplitType.training))
         num_batches_train = num_samples_train // batch_size
         num_samples_val = len(d.GetSplit(ecvl.SplitType.validation))
@@ -132,59 +134,59 @@ def classificate(args):
             s = d.GetSplit()
             random.shuffle(s)
             d.split_.training_ = s
-            d.ResetCurrentBatch()
-            for i in range(num_batches_train):
+            d.ResetAllBatches()
+
+            for b in range(num_batches_train):
                 d.LoadBatch(images, labels)
                 eddl.train_batch(net, [images], [labels], indices)
 
                 losses = eddl.get_losses(net)
                 metrics = eddl.get_metrics(net)
 
-                logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{i + 1}/{num_batches_train}]'
+                logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_train}]'
                                  f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
 
             eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
             logger.print_log('Weights saved')
 
             if len(d.split_.validation_) > 0:
+                eddl.reset_loss(net)
                 logger.print_log(f'Validation {e}/{epochs}')
-
                 d.SetSplit(ecvl.SplitType.validation)
-                d.ResetCurrentBatch()
 
-                for i in range(num_batches_val):
+                for b in range(num_batches_val):
                     d.LoadBatch(images, labels)
                     eddl.eval_batch(net, [images], [labels], indices)
-
                     losses = eddl.get_losses(net)
                     metrics = eddl.get_metrics(net)
                     logger.print_log(
-                        f'Validation - epoch [{e + 1}/{epochs}] - batch [{i + 1}/{num_batches_val}]'
+                        f'Validation - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_val}]'
                         f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
     else:
+        eddl.set_mode(net, 0)
         d.SetSplit(ecvl.SplitType.test)
-        # d.SetSplit(ecvl.SplitType.validation)
         num_samples_test = len(d.GetSplit())
         num_batches_test = num_samples_test // batch_size
+        d.ResetAllBatches()
 
         # Check if this dataset has labels or not
         split_samples_np = np.take(d.samples_, d.GetSplit())
         split_samples_have_labels = all(s.label_ is not None or s.label_path_ is not None for s in split_samples_np)
 
         preds = np.empty((0, num_classes), np.float64)
-        metric_fn = eddl.getMetric(bindings.metrics_binding.get(args.get('metric')))
-        out_layer = eddl.getOut(net)[0]
         values = np.zeros(num_batches_test)
+        out_layer = eddl.getOut(net)[0]
+        metric_fn = eddl.getMetric(bindings.metrics_binding.get(args.get('metric')))
 
         if split_samples_have_labels:
             # The dataset has labels for the images, we can show the metric over the predictions
             for b in range(num_batches_test):
                 d.LoadBatch(images, labels)
-                eddl.forward(net, [images])
-                # tmp = images.select(["0"])
+                # index = 0
+                # tmp = images.select([str(index)])
                 # tmp.mult_(255)
-                # tmp.normalize_(0., 255.)
-                # tmp.save(f"test.png")
+                # tmp.save(f"images_test/{b}_{index}.jpg")
+                eddl.forward(net, [images])
 
                 output = eddl.getOutput(out_layer)
                 value = metric_fn.value(labels, output)
@@ -194,12 +196,12 @@ def classificate(args):
                                  f' metric={np.mean(values[:b + 1] / batch_size):.3f}')
 
                 # Save network predictions
-                for i in range(batch_size):
-                    pred = np.array(output.select([str(i)]), copy=False)
+                for bs in range(batch_size):
+                    pred = np.array(output.select([str(bs)]), copy=False)
                     # gt = np.argmax(np.array(labels)[indices])
                     # pred = np.append(pred, gt).reshape((1, num_classes + 1))
                     preds = np.append(preds, pred, axis=0)
-                    pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
+                    pred_name = d.samples_[d.GetSplit()[b * batch_size + bs]].location_
                     # print(f'{pred_name};{pred}')
                     outputfile.write(f'{pred_name};{pred.tolist()}\n')
             logger.print_log(f'Inference - metric={np.mean(values / batch_size):.3f}')
@@ -209,14 +211,14 @@ def classificate(args):
                 eddl.forward(net, [images])
 
                 logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
-                # SaveSave network predictions
+                # Save network predictions
                 output = eddl.getOutput(out_layer)
-                for i in range(batch_size):
-                    pred = np.array(output.select([str(i)]), copy=False)
+                for bs in range(batch_size):
+                    pred = np.array(output.select([str(bs)]), copy=False)
                     # gt = np.argmax(np.array(labels)[indices])
                     # pred = np.append(pred, gt).reshape((1, num_classes + 1))
                     preds = np.append(preds, pred, axis=0)
-                    pred_name = d.samples_[d.GetSplit()[b * batch_size + i]].location_
+                    pred_name = d.samples_[d.GetSplit()[b * batch_size + bs]].location_
                     # print(f'{pred_name};{pred}')
                     outputfile.write(f'{pred_name};{pred.tolist()}\n')
         outputfile.close()
