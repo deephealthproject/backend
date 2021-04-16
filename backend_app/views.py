@@ -852,9 +852,15 @@ class TrainViewSet(views.APIView):
                 # weight.layer_to_remove inherited from parent and not changed in onnx
                 # NB layer_to_remove could also be null
                 weight.layer_to_remove = weight.pretrained_on.layer_to_remove
+            elif weight.pretrained_on.dataset_id != weight.dataset_id and \
+                    weight.pretrained_on.dataset_id.classes == weight.dataset_id.classes:
+                # Different dataset object but same classes
+                # Maybe a dataset replica?
+                # --> Same layer_to_remove of the parent
+                weight.layer_to_remove = weight.pretrained_on.layer_to_remove
             elif weight.pretrained_on.layer_to_remove is not None:
-                # Otherwise last layer will be replaced
-                # weight.layer_to_remove replaced with a new one named as FINAL_LAYER var
+                # Different dataset -> last layer will be replaced
+                # weight.layer_to_remove replaced with a new one named as FINAL_LAYER variable
                 weight.layer_to_remove = FINAL_LAYER
             else:
                 error = {"Error": f"The Model weight with id `{weight.pretrained_on_id}` cannot be used with dataset"

@@ -1,4 +1,5 @@
 import itertools
+from typing import Dict, Union
 
 from backend import settings
 
@@ -19,7 +20,15 @@ class DotDict(dict):
 dotdict = DotDict
 
 
-def createConfig(task, hyperparams, mode: str):
+def createConfig(task, hyperparams: dict, mode: str) -> Union[bool, Dict]:
+    """
+    Create the configuration dictionary for launching a training/inference job
+
+    @param task: Training or Inference object
+    @param hyperparams: dict containing the hyperparameters for training/inference
+    @param mode: String that can be 'training' or 'inference'
+    @return: A dictionary with information for launch the trainig/inference job
+    """
     assert mode in ['training', 'inference']
     try:
         config = {
@@ -38,11 +47,16 @@ def createConfig(task, hyperparams, mode: str):
         print(f"Type error: {e}")
         return False
 
+    dataset_fields = ['id', 'path', 'ctype', 'ctype_gt', 'classes']
     if mode == 'training':
         # Finetuning on an existing weight or train from scratch using that weight
+
+        # If last_layers are different between current onnx and parent -> you will remove 'layer_to_remove'
+        remove_layer = task.modelweights_id.layer_to_remove != task.modelweights_id.pretrained_on.layer_to_remove
+
         config.update({
             'net': model_to_dict(task.modelweights_id.pretrained_on, fields=['id', 'location', 'layer_to_remove']),
-            'dataset': model_to_dict(task.modelweights_id.dataset_id, fields=['id', 'path', 'ctype', 'ctype_gt']),
+            'dataset': model_to_dict(task.modelweights_id.dataset_id, fields=dataset_fields),
             'task': model_to_dict(task, fields=['id', 'logfile']),
             'lr': abs(float(hyperparams.get('Learning rate'))),
             'epochs': int(hyperparams.get('Epochs')),
@@ -50,12 +64,13 @@ def createConfig(task, hyperparams, mode: str):
             'train_augs': (hyperparams.get('Training augmentations')),
             'val_augs': (hyperparams.get('Validation augmentations')),
             'split': 'training',
+            'remove_layer': remove_layer
         })
     else:
         # Inference
         config.update({
             'net': model_to_dict(task.modelweights_id, fields=['id', 'location']),
-            'dataset': model_to_dict(task.dataset_id, fields=['id', 'path', 'ctype', 'ctype_gt']),
+            'dataset': model_to_dict(task.dataset_id, fields=dataset_fields),
             'task': model_to_dict(task, fields=['id', 'logfile', 'outputfile']),
             'lr': 0.1,
             'test_augs': (hyperparams.get('Test augmentations')),

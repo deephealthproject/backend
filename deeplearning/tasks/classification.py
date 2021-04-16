@@ -69,7 +69,7 @@ def classificate(args):
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
 
     if train:
-        if layer_to_remove:
+        if args.get('remove_layer') and layer_to_remove:
             l_ = eddl.getLayer(net, layer_to_remove)
             if num_classes != l_.output.shape[-1]:
                 # Classification layer must be replaced
@@ -99,7 +99,7 @@ def classificate(args):
             False
         )
 
-        if layer_to_remove:
+        if args.get('remove_layer') and layer_to_remove:
             # Force initialization of new layers
             eddl.initializeLayer(net, FINAL_LAYER)
 
