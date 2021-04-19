@@ -309,14 +309,6 @@ class InferenceSingleViewSet(views.APIView):
         return inference_get(request)
 
 
-@shared_task
-def onnx_download(url, model_out_path):
-    r = requests.get(url, allow_redirects=True)
-    if r.status_code == 200:
-        with open(model_out_path, 'wb') as f:
-            f.write(r.content)
-
-
 class ModelWeightsStatusViewSet(views.APIView):
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('process_id', openapi.IN_QUERY,
@@ -406,9 +398,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             # Return public weights and the ones with own/view permission
             user = self.request.user
             model_id = self.request.query_params.get('model_id')
-            self.queryset = self.queryset.filter(model_id=model_id, public=True)
+            self.queryset = self.queryset.filter(model_id=model_id, public=True, is_active=True)
             # Get weights of current user
-            q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False)
+            q_perm = models.ModelWeights.objects.filter(permission__user=user, model_id=model_id, public=False,
+                                                        is_active=True)
             self.queryset = (self.queryset | q_perm).distinct()
 
             if self.request.query_params.get('dataset_id'):
@@ -489,7 +482,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             else:
                 return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            weight = serializer.save(location=model_out_path, process_id=process_id)
+            weight = serializer.save(location=model_out_path, process_id=process_id, is_active=True)
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
 
             response['weight_id'] = weight.id
@@ -924,7 +917,8 @@ class TrainViewSet(views.APIView):
             hyperparams = {}
 
             # Check if current model has some custom properties and load them
-            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id).select_related(
+            props_allowed = models.AllowedProperty.objects.filter(model_id=weight.model_id_id,
+                                                                  dataset_id=None).select_related(
                 'property_id')
             if props_allowed:
                 for p in props_allowed:
@@ -946,22 +940,20 @@ class TrainViewSet(views.APIView):
             # Overwrite hyperparams with ones provided by the user
             props = serializer.data['properties']
             for p in props:
-                ts = models.TrainingSetting()
-                # Get the property by name
                 name = p['name']
                 name = [name, name.replace('_', ' ')]
-                queryset = models.Property.objects.filter(Q(name__icontains=name[0]) | Q(name__icontains=name[1]))
-                if len(queryset) == 0:
-                    # Property does not exist, delete the weight and its associated properties (cascade)
-                    weight.delete()
-                    error = {"Error": f"Property `{p['name']}` does not exist"}
-                    return Response(error, status=status.HTTP_400_BAD_REQUEST)
-                property = queryset[0]
-                ts = models.TrainingSetting.objects.create(
-                    property_id=property,
-                    training_id=training,
-                    value=str(p['value']))
-                hyperparams[property.name] = ts.value
+                prop_tmp = models.Property.objects.filter(
+                    Q(name__icontains=name[0]) | Q(name__icontains=name[1])).first()
+                hyperparams[prop_tmp.name] = str(p['value'])
+
+            # Create a TrainingSetting for each hyperparameter
+            for k, v in hyperparams.items():
+                if not models.Property.objects.filter(name=k).exists():
+                    raise exceptions.ParseError(f'Property with name `{k}` does not exist')
+                    # error = {"Error": f"Property `{k}` does not exist"}
+                    # return Response(error, status=status.HTTP_400_BAD_REQUEST)
+                field = models.Property.objects.filter(name=k).first()
+                models.TrainingSetting.objects.create(property_id=field, training_id=training, value=v)
 
             config = createConfig(training, hyperparams, 'training')
             if not config:
@@ -1029,3 +1021,24 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
         It requires a `training_id`, indicating a training process, and a `property_id`.
         """
         return super().list(request, *args, **kwargs)
+
+
+@shared_task
+def onnx_download(url, model_out_path):
+    r = requests.get(url, allow_redirects=True)
+    if r.status_code == 200:
+        with open(model_out_path, 'wb') as f:
+            f.write(r.content)
+
+
+@shared_task
+def enable_weight(task_return_value: bool, weight_id: int) -> None:
+    """
+    Enable the weight already trained
+    @param weight_id: id of the weight to enable
+    @return: None
+    """
+    if weight_id:
+        w = models.ModelWeights.objects.get(id=weight_id)
+        w.is_active = True
+        w.save()
