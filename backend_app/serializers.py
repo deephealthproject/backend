@@ -195,9 +195,10 @@ class ModelWeightsSerializer(M2MSerializer):
     class Meta:
         model = models.ModelWeights
         fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users', 'process_id',
-                  'layer_to_remove']
+                  'layer_to_remove', 'is_active']
         extra_kwargs = {
             'process_id': {'read_only': True},
+            'is_active': {'read_only': True},
         }
 
     def update(self, instance, validated_data):

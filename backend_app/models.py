@@ -120,6 +120,7 @@ class ModelWeights(models.Model):
     location = models.CharField(max_length=2048)
     name = models.CharField(max_length=200)
     layer_to_remove = models.CharField(max_length=200, null=True, blank=True)
+    is_active = models.BooleanField('active', default=False)
 
     model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
     dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)

@@ -20,3 +20,13 @@ app.autodiscover_tasks()
 @app.task(bind=True)
 def debug_task(self):
     print('Request: {0!r}'.format(self.request))
+
+
+class CeleryTask(celery.Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        pass
+
+    # def on_success(self, retval, task_id, args, kwargs):
+    #     pass
+    # def run(self, *args, **kwargs):
+    #     pass

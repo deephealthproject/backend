@@ -9,7 +9,8 @@
       "model_id": 1,
       "dataset_id": 1,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   },
   {
@@ -22,7 +23,8 @@
       "model_id": 2,
       "dataset_id": 3,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   },
   {
@@ -35,7 +37,8 @@
       "model_id": 3,
       "dataset_id": 4,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   }
 ]

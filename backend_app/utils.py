@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from backend import settings
-from backend_app import models
+from backend_app import models, views
 from deeplearning.tasks import classification, segmentation
 from deeplearning.utils import createConfig
 from streamflow_app import models as sf_models
@@ -139,10 +139,11 @@ def launch_training_inference(task_manager, task_name, task_instance, config, sf
     if task_manager == 'CELERY':
         # Differentiate the task and start training
         if task_name == 'classification':
-            celery_id = classification.classificate.delay(config)
+            celery_id = classification.classificate.apply_async(args=[config],
+                                                                link=views.enable_weight.s(new_training_weight))
             # celery_id = classification.classificate(config)
         elif task_name == 'segmentation':
-            celery_id = segmentation.segment.delay(config)
+            celery_id = segmentation.segment.apply_async(args=[config], link=views.enable_weight.s(new_training_weight))
             # celery_id = segmentation.segment(config)
         else:
             return task_error
