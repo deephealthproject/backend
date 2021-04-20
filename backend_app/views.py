@@ -693,13 +693,11 @@ class StatusView(views.APIView):
         """
         full_return_string = False
 
-        if not self.request.query_params.get('process_id'):
-            error = {'Error': f'Missing required parameter `process_id`'}
-            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
-        process_id = self.request.query_params.get('process_id')
-        full = False
-        if self.request.query_params.get('full'):
-            full = self.request.query_params.get('full')
+        serializer = serializers.StatusSerializer(data=request.query_params)
+
+        serializer.is_valid(raise_exception=True)
+        process_id = serializer.validated_data['process_id']
+        full = serializer.validated_data['full']
 
         if models.Training.objects.filter(celery_id=process_id).exists():
             process_type = 'training'
@@ -846,6 +844,7 @@ class TrainViewSet(views.APIView):
                 # NB layer_to_remove could also be null
                 weight.layer_to_remove = weight.pretrained_on.layer_to_remove
             elif weight.pretrained_on.dataset_id != weight.dataset_id and \
+                    weight.pretrained_on.dataset_id is not None and \
                     weight.pretrained_on.dataset_id.classes == weight.dataset_id.classes:
                 # Different dataset object but same classes
                 # Maybe a dataset replica?

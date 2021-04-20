@@ -303,6 +303,11 @@ class PropertyTrainSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'value']
 
 
+class StatusSerializer(serializers.Serializer):
+    process_id = serializers.UUIDField()
+    full = serializers.BooleanField(required=False)
+
+
 class StopProcessSerializer(serializers.Serializer):
     process_id = serializers.UUIDField()
 
