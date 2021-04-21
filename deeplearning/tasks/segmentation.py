@@ -11,7 +11,6 @@ from celery import shared_task
 from pyeddl.tensor import Tensor
 
 from backend import settings
-from deeplearning import bindings
 from deeplearning.utils import Logger
 
 
@@ -105,8 +104,8 @@ def segment(args):
         eddl.build(
             net,
             eddl.adam(args.get('lr')),
-            [bindings.losses_binding.get(args.get('loss'))],
-            [bindings.metrics_binding.get(args.get('metric'))],
+            [args.get('loss')],
+            [args.get('metric')],
             eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU()
         )
     else:  # inference

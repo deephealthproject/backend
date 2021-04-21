@@ -11,7 +11,6 @@ from pyeddl._core import eddl as eddl_core
 from pyeddl.tensor import Tensor
 
 from backend import settings
-from deeplearning import bindings
 from deeplearning.utils import FINAL_LAYER, Logger
 
 
@@ -93,8 +92,8 @@ def classificate(args):
         eddl.build(
             net,
             eddl.adam(args.get('lr')),
-            [bindings.losses_binding.get(args.get('loss'))],
-            [bindings.metrics_binding.get(args.get('metric'))],
+            [args.get('loss')],
+            [args.get('metric')],
             eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
             False
         )
@@ -176,7 +175,7 @@ def classificate(args):
         preds = np.empty((0, num_classes), np.float64)
         values = np.zeros(num_batches_test)
         out_layer = eddl.getOut(net)[0]
-        metric_fn = eddl.getMetric(bindings.metrics_binding.get(args.get('metric')))
+        metric_fn = eddl.getMetric(args.get('metric'))
 
         if split_samples_have_labels:
             # The dataset has labels for the images, we can show the metric over the predictions

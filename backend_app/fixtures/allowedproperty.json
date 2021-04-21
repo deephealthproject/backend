@@ -17,8 +17,8 @@
       "property_id": 2,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": "CrossEntropy,MSE",
-      "default_value": "CrossEntropy"
+      "allowed_value": "cross_entropy,mean_squared_error",
+      "default_value": "cross_entropy"
     }
   },
   {
@@ -39,8 +39,8 @@
       "property_id": 5,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": "CategoricalAccuracy",
-      "default_value": "CategoricalAccuracy"
+      "allowed_value": "accuracy",
+      "default_value": "accuracy"
     }
   },
   {
@@ -127,8 +127,8 @@
       "property_id": 2,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": "CrossEntropy,MSE",
-      "default_value": "CrossEntropy"
+      "allowed_value": "cross_entropy,mean_squared_error",
+      "default_value": "cross_entropy"
     }
   },
   {
@@ -149,8 +149,8 @@
       "property_id": 5,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": "CategoricalAccuracy",
-      "default_value": "CategoricalAccuracy"
+      "allowed_value": "accuracy",
+      "default_value": "accuracy"
     }
   },
   {
@@ -237,8 +237,8 @@
       "property_id": 2,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": "CrossEntropy,MSE",
-      "default_value": "MSE"
+      "allowed_value": "cross_entropy,mean_squared_error",
+      "default_value": "mean_squared_error"
     }
   },
   {
@@ -259,8 +259,8 @@
       "property_id": 5,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": "MSE,MAE,MRE",
-      "default_value": "MSE"
+      "allowed_value": "mean_squared_error,mean_absolute_error,mean_relative_error",
+      "default_value": "mean_squared_error"
     }
   },
   {

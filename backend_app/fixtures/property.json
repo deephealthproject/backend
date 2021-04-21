@@ -15,8 +15,8 @@
     "fields": {
       "name": "Loss function",
       "type": "list",
-      "default": "CrossEntropy",
-      "values": "CrossEntropy,SoftCrossEntropy,MSE"
+      "default": "cross_entropy",
+      "values": "cross_entropy,softmax_cross_entropy,mean_squared_error,binary_cross_entropy,dice"
     }
   },
   {
@@ -45,8 +45,8 @@
     "fields": {
       "name": "Metric",
       "type": "list",
-      "default": "CategoricalAccuracy",
-      "values": "CategoricalAccuracy,MSE,MAE,MRE,Sum"
+      "default": "accuracy",
+      "values": "accuracy,mean_squared_error,mean_absolute_error,mean_relative_error,dice"
     }
   },
   {
