@@ -12,6 +12,8 @@ class SFEnvironmentViewSet(mixins.ListModelMixin,
     # serializer_class = serializers.SFSSHSerializer
 
     def get_queryset(self):
+        if self.request.user.is_anonymous:
+            return None
         self.queryset = self.queryset.filter(user=self.request.user)
         return self.queryset
 
