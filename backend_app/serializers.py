@@ -175,7 +175,7 @@ class ModelWeightsCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'model_id', 'dataset_id', 'layer_to_remove', 'onnx_url', 'onnx_data']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'layer_to_remove', 'onnx_url', 'onnx_data', 'classes']
         extra_kwargs = {
             'onnx_url': {'write_only': True},
             'onnx_data': {'write_only': True},
@@ -195,10 +195,11 @@ class ModelWeightsSerializer(M2MSerializer):
     class Meta:
         model = models.ModelWeights
         fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users', 'process_id',
-                  'layer_to_remove', 'is_active']
+                  'layer_to_remove', 'is_active', 'classes']
         extra_kwargs = {
             'process_id': {'read_only': True},
             'is_active': {'read_only': True},
+            'classes': {'read_only': True},
         }
 
     def update(self, instance, validated_data):

@@ -121,6 +121,10 @@ class UserView(generics.CreateAPIView,
         """
         return super().put(request, *args, **kwargs)
 
+    @swagger_auto_schema(auto_schema=None)  # Remove swagger docs
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

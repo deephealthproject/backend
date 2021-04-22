@@ -121,6 +121,8 @@ class ModelWeights(models.Model):
     name = models.CharField(max_length=200)
     layer_to_remove = models.CharField(max_length=200, null=True, blank=True)
     is_active = models.BooleanField('active', default=False)
+    classes = models.TextField(null=True, blank=True,
+                               help_text='List of classes of the dataset from which the weight has been trained')
 
     model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
     dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)

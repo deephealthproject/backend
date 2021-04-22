@@ -456,11 +456,19 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         `onnx_url` field.
         The `dataset_id` optional parameter indicates that the model has been already trained on a certain dataset. \
         The backend will then create a new ModelWeight instance for these Model and Dataset.
+
+        If the weight to upload has been trained on a dataset that does not exist in the backend, then the `classes` \
+        field can be provided too. This field works the same as Dataset `classes` field, and contains the list of \
+        classes of the dataset employed for training the weight.
         """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             name = serializer.validated_data.get('name')
-            model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'  # TODO this overwrite the file if exists
+            if Path(f'{settings.MODELS_DIR}/{name}.onnx').exists():
+                # If file already exists append a suffix
+                model_out_path = f'{settings.MODELS_DIR}/{name}_{uuid.uuid4().hex}.onnx'
+            else:
+                model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'
             process_id = None
             if serializer.validated_data.get('onnx_url'):
                 # download onnx file from url
@@ -498,7 +506,7 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         """
         return super().update(request, *args, **kwargs)
 
-    @swagger_auto_schema(auto_schema=None)
+    @swagger_auto_schema(auto_schema=None)  # Remove swagger docs
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
@@ -834,6 +842,7 @@ class TrainViewSet(views.APIView):
             # Create a new modelweights and start training
             weight = models.ModelWeights()
             weight.dataset_id_id = serializer.validated_data['dataset_id']
+            weight.classes = weight.dataset_id.classes  # Inherit from dataset
             weight.pretrained_on_id = serializer.validated_data['weights_id']
             # Inherit model and layer_to_remove from weight used as pretraining
             weight.model_id = weight.pretrained_on.model_id
@@ -843,12 +852,18 @@ class TrainViewSet(views.APIView):
                 # weight.layer_to_remove inherited from parent and not changed in onnx
                 # NB layer_to_remove could also be null
                 weight.layer_to_remove = weight.pretrained_on.layer_to_remove
-            elif weight.pretrained_on.dataset_id != weight.dataset_id and \
-                    weight.pretrained_on.dataset_id is not None and \
+            elif weight.pretrained_on.dataset_id is not None and \
+                    weight.pretrained_on.dataset_id != weight.dataset_id and \
                     weight.pretrained_on.dataset_id.classes == weight.dataset_id.classes:
                 # Different dataset object but same classes
                 # Maybe a dataset replica?
                 # --> Same layer_to_remove of the parent
+                weight.layer_to_remove = weight.pretrained_on.layer_to_remove
+            elif weight.pretrained_on.dataset_id is None and \
+                    weight.classes == weight.dataset_id.classes:
+                # Current weight has classes which are the same of the current dataset
+                # it means that you should not remove last layer (maybe)
+                # --> Same layer_to_remove of the parent and thus last layer will not be removed
                 weight.layer_to_remove = weight.pretrained_on.layer_to_remove
             elif weight.pretrained_on.layer_to_remove is not None:
                 # Different dataset -> last layer will be replaced
