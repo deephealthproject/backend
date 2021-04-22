@@ -34,12 +34,17 @@ class AllowedProperty(models.Model):
 
     It is useful to provide default and admissible values for empty projects.
     """
-    property_id = models.ForeignKey('Property', on_delete=models.PROTECT)
-    model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
-    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
+    property_id = models.ForeignKey('Property', on_delete=models.PROTECT,
+                                    help_text='The property for which specify a custom values')
+    model_id = models.ForeignKey('Model', on_delete=models.CASCADE, help_text='Model linked to this custom values')
+    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True,
+                                   help_text='Dataset linked to this custom values')
 
-    allowed_value = models.TextField(null=True, blank=True)
-    default_value = models.TextField(null=True, blank=True)
+    allowed_value = models.TextField(null=True, blank=True,
+                                     help_text='List or string of allowed values for this combination of '
+                                               'property-model[-dataset]')
+    default_value = models.TextField(null=True, blank=True,
+                                     help_text='The default value for this combination of property-model[-dataset]')
 
     class Meta:
         constraints = [
@@ -56,18 +61,22 @@ class AllowedProperty(models.Model):
 
 
 class Dataset(models.Model):
-    name = models.CharField(max_length=32)
-    path = models.CharField(max_length=2048)
-    classes = models.TextField(null=True, blank=True)
+    name = models.CharField(max_length=32, help_text='The name of the dataset')
+    path = models.CharField(max_length=2048, help_text='Absolute path to the YAML file of the dataset')
+    classes = models.TextField(null=True, blank=True,
+                               help_text='List of values (comma separated) which represents the classes of the dataset')
 
-    is_single_image = models.BooleanField(default=False)
-    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
+    is_single_image = models.BooleanField(default=False,
+                                          help_text='Whether the dataset has been generated for InferenceSingle')
     public = models.BooleanField(default=False)
+    ctype = models.CharField(choices=ColorTypes.choices, max_length=5, default=ColorTypes.RGB,
+                             help_text='The ColorType of the images')
+    ctype_gt = models.CharField(choices=ColorTypes.choices, max_length=5, null=True, blank=True,
+                                help_text='The ColorType of the ground truth images')
 
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission')
-
-    ctype = models.CharField(choices=ColorTypes.choices, max_length=5, default=ColorTypes.RGB)
-    ctype_gt = models.CharField(choices=ColorTypes.choices, max_length=5, null=True, blank=True)
+    task_id = models.ForeignKey('Task', on_delete=models.PROTECT, help_text='The task which the dataset refers to')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='DatasetPermission',
+                                   help_text='List of users who have rights to access this dataset')
 
     class Meta:
         indexes = [models.Index(fields=['is_single_image'])]
@@ -84,17 +93,21 @@ class DatasetPermission(models.Model):
 
 
 class Inference(models.Model):
-    modelweights_id = models.ForeignKey('ModelWeights', on_delete=models.CASCADE)
-    dataset_id = models.ForeignKey(Dataset, on_delete=models.CASCADE)
-    stats = models.CharField(max_length=2048)
+    modelweights_id = models.ForeignKey('ModelWeights', on_delete=models.CASCADE,
+                                        help_text='Weight used for the inference')
+    dataset_id = models.ForeignKey(Dataset, on_delete=models.CASCADE, help_text='Dataset used for the inference')
+    stats = models.CharField(max_length=2048, help_text='File used for store statistics')
 
     # Celery generates a random uuid4
-    celery_id = models.CharField(max_length=50, null=True, blank=True)
+    celery_id = models.CharField(max_length=50, null=True, blank=True, help_text='UUID4 indicating the celery task')
     # logfile = models.FilePathField(path=opjoin(settings.INFERENCE_DIR, 'logs'), null=True, blank=True)
-    logfile = models.CharField(max_length=2048, null=True, blank=True)
-    outputfile = models.CharField(max_length=2048, null=True, blank=True)
+    logfile = models.CharField(max_length=2048, null=True, blank=True,
+                               help_text='Absolute path to the file which stores the log of the inference process')
+    outputfile = models.CharField(max_length=2048, null=True, blank=True,
+                                  help_text='Absolute path of the file which store the prediction of the inference')
 
-    project_id = models.ForeignKey('Project', on_delete=models.CASCADE)
+    project_id = models.ForeignKey('Project', on_delete=models.CASCADE,
+                                   help_text='Project on which this inference has been lanched')
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
@@ -105,8 +118,8 @@ class Inference(models.Model):
 
 
 class Model(models.Model):
-    name = models.CharField(max_length=32)
-    task_id = models.ForeignKey('Task', on_delete=models.PROTECT)
+    name = models.CharField(max_length=255, help_text='Name of a neural network model family')
+    task_id = models.ForeignKey('Task', on_delete=models.PROTECT, help_text='Task which the model refers to')
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -117,22 +130,30 @@ class Model(models.Model):
 
 
 class ModelWeights(models.Model):
-    location = models.CharField(max_length=2048)
-    name = models.CharField(max_length=200)
-    layer_to_remove = models.CharField(max_length=200, null=True, blank=True)
-    is_active = models.BooleanField('active', default=False)
+    location = models.CharField(max_length=2048, help_text='Absolute path of the ONNX weight')
+    name = models.CharField(max_length=200, help_text='The name of the model weight')
+    layer_to_remove = models.CharField(max_length=200, null=True, blank=True,
+                                       help_text='Name of the ONNX layer which will be removed when finetuning')
+    is_active = models.BooleanField('active', default=False,
+                                    help_text='Boolean which tells if the weight is ready to be used or not')
     classes = models.TextField(null=True, blank=True,
                                help_text='List of classes of the dataset from which the weight has been trained')
 
-    model_id = models.ForeignKey('Model', on_delete=models.CASCADE)
-    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True)
-    pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
-    public = models.BooleanField(default=False)
+    model_id = models.ForeignKey('Model', on_delete=models.CASCADE,
+                                 help_text='The model family which this weight belong to')
+    dataset_id = models.ForeignKey('Dataset', on_delete=models.CASCADE, null=True, blank=True,
+                                   help_text='Dataset on which this has weight has been trained on')
+    pretrained_on = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
+                                      help_text='The parent weight used as pretraining')
+    public = models.BooleanField(default=False, help_text='Wheter the weight is public or private')
 
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ModelWeightsPermission',
+                                   help_text='List of users who have rights to access this weight')
 
     # A new model onnx is uploaded to backend async with celery.
-    process_id = models.CharField(max_length=50, null=True, blank=True)  # Used for downloading ONNX from url
+    process_id = models.CharField(max_length=50, null=True, blank=True,
+                                  help_text='Optional UUID4 used for storing the celery task id when the'
+                                            ' weight is downloaded from url')
 
     class Meta:
         ordering = ('model_id', 'id',)
@@ -143,16 +164,21 @@ class ModelWeights(models.Model):
 
 
 class ModelWeightsPermission(models.Model):
-    modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE, related_name='permission')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
+    modelweight = models.ForeignKey(ModelWeights, on_delete=models.CASCADE, related_name='permission',
+                                    help_text='Weight for which specify a permission')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             help_text='User which grants a permission')
+    permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER,
+                                  help_text='Kind of permission')
 
 
 class Project(models.Model):
-    name = models.CharField(max_length=32)
-    task_id = models.ForeignKey('backend_app.Task', on_delete=models.PROTECT)
+    name = models.CharField(max_length=255, help_text='Name of a user project')
+    task_id = models.ForeignKey('backend_app.Task', on_delete=models.PROTECT,
+                                help_text='The project focuses on a fixed task')
 
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ProjectPermission', related_name='projects')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='ProjectPermission', related_name='projects',
+                                   help_text='Users who can manage and interact within the project')
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -168,11 +194,18 @@ class ProjectPermission(models.Model):
     permission = models.CharField(choices=Perm.choices, max_length=4, default=Perm.OWNER)
 
 
+class PropertyType(models.TextChoices):
+    int = 'INT', 'Integer'
+    float = 'FLT', 'Float'
+    list = 'LST', 'List'
+    string = 'STR', 'String'
+
+
 class Property(models.Model):
-    name = models.CharField(max_length=50)
-    type = models.CharField(max_length=50)
-    default = models.TextField(null=True, blank=True)
-    values = models.TextField(null=True, blank=True)
+    name = models.CharField(max_length=50, help_text='Name of a property')
+    type = models.CharField(choices=PropertyType.choices, max_length=3, help_text='Type of the property')
+    default = models.TextField(null=True, blank=True, help_text='The default value of the property')
+    values = models.TextField(null=True, blank=True, help_text='Values which the property could get')
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -184,7 +217,7 @@ class Property(models.Model):
 
 
 class Task(models.Model):
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=255, help_text='The name of a task (e.g. classification)')
 
     class Meta:
         indexes = [models.Index(fields=['name'])]
@@ -195,12 +228,15 @@ class Task(models.Model):
 
 
 class Training(models.Model):
+    logfile = models.CharField(max_length=2048, null=True, blank=True,
+                               help_text='The absolute path to the training log file')
     # Celery generates a random uuid4
-    celery_id = models.CharField(max_length=50, null=True, blank=True)
-    logfile = models.CharField(max_length=2048, null=True, blank=True)
+    celery_id = models.CharField(max_length=50, null=True, blank=True, help_text='Celery UUID4 task process id')
 
-    modelweights_id = models.ForeignKey('ModelWeights', on_delete=models.CASCADE)
-    project_id = models.ForeignKey('Project', on_delete=models.CASCADE)
+    modelweights_id = models.ForeignKey('ModelWeights', on_delete=models.CASCADE,
+                                        help_text='Weight produced in this learning process')
+    project_id = models.ForeignKey('Project', on_delete=models.CASCADE,
+                                   help_text='Project in which this training has been launched')
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
@@ -212,10 +248,11 @@ class Training(models.Model):
 
 
 class TrainingSetting(models.Model):
-    training_id = models.ForeignKey(Training, on_delete=models.CASCADE)
-    property_id = models.ForeignKey(Property, on_delete=models.CASCADE)
-
-    value = models.CharField(max_length=50)
+    training_id = models.ForeignKey(Training, on_delete=models.CASCADE,
+                                    help_text='Training process for which stores settings')
+    property_id = models.ForeignKey(Property, on_delete=models.CASCADE,
+                                    help_text='The property of whom store the value')
+    value = models.TextField(help_text='The value used for the training')
 
     class Meta:
         ordering = ['id']

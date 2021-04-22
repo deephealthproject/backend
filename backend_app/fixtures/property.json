@@ -4,7 +4,7 @@
     "pk": 1,
     "fields": {
       "name": "Learning rate",
-      "type": "float",
+      "type": "FLT",
       "default": "0.0001",
       "values": null
     }
@@ -14,7 +14,7 @@
     "pk": 2,
     "fields": {
       "name": "Loss function",
-      "type": "list",
+      "type": "LST",
       "default": "cross_entropy",
       "values": "cross_entropy,softmax_cross_entropy,mean_squared_error,binary_cross_entropy,dice"
     }
@@ -24,7 +24,7 @@
     "pk": 3,
     "fields": {
       "name": "Epochs",
-      "type": "integer",
+      "type": "INT",
       "default": "50",
       "values": null
     }
@@ -34,7 +34,7 @@
     "pk": 4,
     "fields": {
       "name": "Batch size",
-      "type": "integer",
+      "type": "INT",
       "default": "1",
       "values": null
     }
@@ -44,7 +44,7 @@
     "pk": 5,
     "fields": {
       "name": "Metric",
-      "type": "list",
+      "type": "LST",
       "default": "accuracy",
       "values": "accuracy,mean_squared_error,mean_absolute_error,mean_relative_error,dice"
     }
@@ -54,7 +54,7 @@
     "pk": 6,
     "fields": {
       "name": "Input height",
-      "type": "integer",
+      "type": "INT",
       "default": "100",
       "values": null
     }
@@ -64,7 +64,7 @@
     "pk": 7,
     "fields": {
       "name": "Input width",
-      "type": "integer",
+      "type": "INT",
       "default": "100",
       "values": null
     }
@@ -74,7 +74,7 @@
     "pk": 8,
     "fields": {
       "name": "Training augmentations",
-      "type": "string",
+      "type": "STR",
       "default": null,
       "values": null
     }
@@ -84,7 +84,7 @@
     "pk": 9,
     "fields": {
       "name": "Validation augmentations",
-      "type": "string",
+      "type": "STR",
       "default": null,
       "values": null
     }
@@ -94,7 +94,7 @@
     "pk": 10,
     "fields": {
       "name": "Test augmentations",
-      "type": "string",
+      "type": "STR",
       "default": null,
       "values": null
     }
