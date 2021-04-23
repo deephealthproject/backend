@@ -282,8 +282,19 @@ StatusView_get_response = {
                                     "result": "ok",
                                     "status": {
                                         "process_type": "training",
-                                        "process_status": "finished",
-                                        "process_data": "Train Epoch: 1/2 [1/30000]categorical_cross_entropy=1.130 - categorical_accuracy=0.121"
+                                        "process_status": "SUCCESS",
+                                        "process_data": "Validation - epoch [70/70] - batch [40/40] - loss=0.857 - metric=0.820"
+                                    }
+                                }
+                            }),
+    '500': openapi.Response('Status of a process which raised an error', serializers.StatusResponse(),
+                            examples={"application/json":
+                                {
+                                    "result": "error",
+                                    "status": {
+                                        "process_type": "training",
+                                        "process_status": "FAILURE",
+                                        "process_data": "[Error]: Incompatible dimensions"
                                     }
                                 }
                             }),
@@ -293,7 +304,7 @@ StatusView_get_response = {
                                     "result": "error",
                                     "error": "Process not found."
                                 }
-                            })
+                            }),
 }
 
 StopProcessViewSet_post_response = {

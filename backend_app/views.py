@@ -691,13 +691,20 @@ class StatusView(views.APIView):
                          responses=swagger.StatusView_get_response
                          )
     def get(self, request):
-        """Return the status of an training or inference process
+        """Return the status of an training or inference process.
 
         This  API allows the frontend to query the status of a training or inference, identified by a `process_id` \
         (which is returned by `/train` or `/inference` APIs).
 
         When the optional parameter `full=true` is provided, the status api returns the full log of the process \
         execution.
+
+        The _process_status_ field can provide different codes:
+         - PENDING: The task is waiting for execution.
+         - STARTED: The task has been started.
+         - RETRY: The task is to be retried, possibly because of failure.
+         - FAILURE: The task raised an exception, or has exceeded the retry limit.
+         - SUCCESS: The task executed successfully.
         """
         full_return_string = False
 
@@ -716,7 +723,7 @@ class StatusView(views.APIView):
         else:
             res = {
                 "result": "error",
-                "error": "Process not found."
+                "error": "Process not found"
             }
             return Response(data=res, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -727,15 +734,23 @@ class StatusView(views.APIView):
                 "result": "error",
                 "error": "Log file not found"
             }
-            return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data=res, status=status.HTTP_404_NOT_FOUND)
 
         lines_split = lines.splitlines()
         last_line = -1
         if lines_split[last_line] == '<done>':
-            process_status = 'finished'
             last_line = -2
-        else:
-            process_status = 'running'
+        process = AsyncResult(str(process_id))
+        if process.status == 'FAILURE':
+            res = {
+                'result': 'error',
+                'status': {
+                    'process_type': process_type,
+                    'process_status': process.status,
+                    'process_data': str(process.result),
+                }
+            }
+            return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if full:
             try:
@@ -752,7 +767,7 @@ class StatusView(views.APIView):
             'result': 'ok',
             'status': {
                 'process_type': process_type,
-                'process_status': process_status,
+                'process_status': process.status,
                 'process_data': process_data,
             }
         }
@@ -1056,3 +1071,8 @@ def enable_weight(task_return_value: bool, weight_id: int) -> None:
         w = models.ModelWeights.objects.get(id=weight_id)
         w.is_active = True
         w.save()
+
+
+@shared_task
+def error_handler(request, exc, traceback):
+    print('Task {0} raised exception: {1!r}\n{2!r}'.format(request.id, exc, traceback))
