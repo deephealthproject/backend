@@ -77,8 +77,8 @@ Read the [auth/README.md](auth_app/README.md) file for configuring the authentic
 
 ## Getting Started
 Tutorials, get you started with understanding and using the back-end:
-  - [Launch a training process](run_a_neural_network_training.md)
-  - [Inference with our data](inference_using_our_data.md)
+  - [Launch a training process](tutorials/run_a_neural_network_training.md)
+  - [Inference with our data](tutorials/inference_using_our_data.md)
 
 The following table contains Postman collections for practicing with the back-end.
 
