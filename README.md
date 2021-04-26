@@ -6,7 +6,7 @@ The DeepHealth back-end interacts with the front-end, serving various APIs. It r
 
 API documentation: [jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger](https://jenkins-master-deephealth-unix01.ing.unimore.it/backend/swagger)
 
-### DB schema:
+### DB Schema:
 ![db_schema_base](imgs/db_schema_base.svg)
 <details>
 <summary>Full DB schema:</summary>
@@ -44,7 +44,7 @@ Edit the `config` file to configure the application (SECRET_KEY, DB and RabbitMQ
 Install with: `sudo apt install rabbitmq-server` 
 and run the celery deamon with: `python manage.py celery`.
 
-## First run
+## First Run
 
 The back-end is a web-server based on Django, so it must be initialized like any Django project.
 
@@ -74,11 +74,15 @@ python manage.py celery
 
 Read the [auth/README.md](auth_app/README.md) file for configuring the authentication backend.
 
-## API Practice
 
-The following table contains Postman collections for practicing with the backend.
+## Getting Started
+Tutorials, get you started with understanding and using the back-end:
+  - [Launch a training process](run_a_neural_network_training.md)
+  - [Inference with our data](inference_using_our_data.md)
+
+The following table contains Postman collections for practicing with the back-end.
 
 | Collection | Postman Link |
 |:---:|:---:|
+| Backend API collection | [![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/9656041-baabe6bc-2946-4aab-b848-cf87d6a94d93?action=collection%2Ffork&collection-url=entityId%3D9656041-baabe6bc-2946-4aab-b848-cf87d6a94d93%26entityType%3Dcollection%26workspaceId%3De3d18ee2-dc22-4593-be0c-ee2c300b3c8f)
 | 2nd Hackathon - Pneumothorax | [![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/71cdc7dda0505b4be84c) |
-

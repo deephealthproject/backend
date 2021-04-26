@@ -431,70 +431,82 @@
 <!-- backend_app_models_ModelWeights -->
 <g id="node9" class="node">
 <title>backend_app_models_ModelWeights</title>
-<polygon fill="white" stroke="transparent" points="460,-316.5 460,-456.5 648,-456.5 648,-316.5 460,-316.5"/>
-<polygon fill="#1b563f" stroke="transparent" points="461,-434.5 461,-455.5 647,-455.5 647,-434.5 461,-434.5"/>
-<text text-anchor="start" x="493.5" y="-443.5" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="503.5" y="-443.5" font-family="Roboto" font-weight="bold" font-size="10.00" fill="white"> &#160;&#160;&#160;ModelWeights &#160;&#160;&#160;</text>
+<polygon fill="white" stroke="transparent" points="460,-303.5 460,-469.5 648,-469.5 648,-303.5 460,-303.5"/>
+<polygon fill="#1b563f" stroke="transparent" points="461,-447.5 461,-468.5 647,-468.5 647,-447.5 461,-447.5"/>
+<text text-anchor="start" x="493.5" y="-456.5" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="503.5" y="-456.5" font-family="Roboto" font-weight="bold" font-size="10.00" fill="white"> &#160;&#160;&#160;ModelWeights &#160;&#160;&#160;</text>
+<text text-anchor="start" x="463" y="-440.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-440.1" font-family="Roboto" font-weight="bold" font-size="8.00">id</text>
+<text text-anchor="start" x="483" y="-440.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="554" y="-440.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564" y="-440.1" font-family="Roboto" font-weight="bold" font-size="8.00">AutoField</text>
+<text text-anchor="start" x="608" y="-440.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-427.1" font-family="Roboto" font-weight="bold" font-size="8.00">id</text>
-<text text-anchor="start" x="483" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-427.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">dataset_id</text>
+<text text-anchor="start" x="520" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-427.1" font-family="Roboto" font-weight="bold" font-size="8.00">AutoField</text>
-<text text-anchor="start" x="608" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564" y="-427.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">ForeignKey (id)</text>
+<text text-anchor="start" x="635" y="-427.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-414.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-414.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">dataset_id</text>
-<text text-anchor="start" x="520" y="-414.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-414.1" font-family="Roboto" font-weight="bold" font-size="8.00">model_id</text>
+<text text-anchor="start" x="514" y="-414.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-414.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-414.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">ForeignKey (id)</text>
+<text text-anchor="start" x="564" y="-414.1" font-family="Roboto" font-weight="bold" font-size="8.00">ForeignKey (id)</text>
 <text text-anchor="start" x="635" y="-414.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-401.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-401.1" font-family="Roboto" font-weight="bold" font-size="8.00">model_id</text>
-<text text-anchor="start" x="514" y="-401.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-401.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">pretrained_on</text>
+<text text-anchor="start" x="537" y="-401.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-401.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-401.1" font-family="Roboto" font-weight="bold" font-size="8.00">ForeignKey (id)</text>
+<text text-anchor="start" x="564" y="-401.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">ForeignKey (id)</text>
 <text text-anchor="start" x="635" y="-401.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-388.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">pretrained_on</text>
-<text text-anchor="start" x="537" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-388.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">classes</text>
+<text text-anchor="start" x="504" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-388.1" font-family="Roboto" font-weight="bold" font-size="8.00" fill="#7b7b7b">ForeignKey (id)</text>
-<text text-anchor="start" x="635" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564" y="-388.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">TextField</text>
+<text text-anchor="start" x="599" y="-388.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-375.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">layer_to_remove</text>
-<text text-anchor="start" x="540" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-375.1" font-family="Roboto" font-size="8.00">is_active</text>
+<text text-anchor="start" x="509" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-375.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">CharField</text>
-<text text-anchor="start" x="602" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564" y="-375.1" font-family="Roboto" font-size="8.00">BooleanField</text>
+<text text-anchor="start" x="617" y="-375.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-362.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-362.1" font-family="Roboto" font-size="8.00">location</text>
-<text text-anchor="start" x="507" y="-362.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-362.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">layer_to_remove</text>
+<text text-anchor="start" x="540" y="-362.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-362.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-362.1" font-family="Roboto" font-size="8.00">CharField</text>
+<text text-anchor="start" x="564" y="-362.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">CharField</text>
 <text text-anchor="start" x="602" y="-362.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-349.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-349.1" font-family="Roboto" font-size="8.00">name</text>
-<text text-anchor="start" x="497" y="-349.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-349.1" font-family="Roboto" font-size="8.00">location</text>
+<text text-anchor="start" x="507" y="-349.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-349.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="564" y="-349.1" font-family="Roboto" font-size="8.00">CharField</text>
 <text text-anchor="start" x="602" y="-349.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-336.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-336.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">process_id</text>
-<text text-anchor="start" x="517" y="-336.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-336.1" font-family="Roboto" font-size="8.00">name</text>
+<text text-anchor="start" x="497" y="-336.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-336.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-336.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">CharField</text>
+<text text-anchor="start" x="564" y="-336.1" font-family="Roboto" font-size="8.00">CharField</text>
 <text text-anchor="start" x="602" y="-336.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="463" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="473" y="-323.1" font-family="Roboto" font-size="8.00">public</text>
-<text text-anchor="start" x="498" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-323.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">process_id</text>
+<text text-anchor="start" x="517" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="554" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564" y="-323.1" font-family="Roboto" font-size="8.00">BooleanField</text>
-<text text-anchor="start" x="617" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="black" points="460,-316.5 460,-456.5 648,-456.5 648,-316.5 460,-316.5"/>
+<text text-anchor="start" x="564" y="-323.1" font-family="Roboto" font-size="8.00" fill="#7b7b7b">CharField</text>
+<text text-anchor="start" x="602" y="-323.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="463" y="-310.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="473" y="-310.1" font-family="Roboto" font-size="8.00">public</text>
+<text text-anchor="start" x="498" y="-310.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="554" y="-310.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564" y="-310.1" font-family="Roboto" font-size="8.00">BooleanField</text>
+<text text-anchor="start" x="617" y="-310.1" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="black" points="460,-303.5 460,-469.5 648,-469.5 648,-303.5 460,-303.5"/>
 </g>
 <!-- backend_app_models_Inference&#45;&gt;backend_app_models_ModelWeights -->
 <g id="edge9" class="edge">
 <title>backend_app_models_Inference&#45;&gt;backend_app_models_ModelWeights</title>
-<path fill="none" stroke="black" d="M203.86,-518.68C219.67,-509.75 236.34,-501.74 253,-496 333.19,-468.35 364.52,-510.19 443,-478 454.04,-473.47 464.85,-467.46 475.11,-460.68"/>
+<path fill="none" stroke="black" d="M203.86,-518.68C219.67,-509.75 236.34,-501.74 253,-496 333.19,-468.35 364.52,-510.19 443,-478 446.34,-476.63 449.65,-475.13 452.93,-473.51"/>
 <ellipse fill="black" stroke="black" cx="200.12" cy="-520.85" rx="4" ry="4"/>
 <text text-anchor="middle" x="312.5" y="-498.6" font-family="Roboto" font-size="8.00"> modelweights_id (inference)</text>
 </g>
@@ -535,15 +547,15 @@
 <!-- backend_app_models_ModelWeights&#45;&gt;backend_app_models_Dataset -->
 <g id="edge11" class="edge">
 <title>backend_app_models_ModelWeights&#45;&gt;backend_app_models_Dataset</title>
-<path fill="none" stroke="black" d="M617.92,-306.09C628.27,-293.33 638.91,-280.28 649,-268 653.7,-262.27 658.59,-256.36 663.51,-250.42"/>
-<ellipse fill="black" stroke="black" cx="615.38" cy="-309.22" rx="4" ry="4"/>
+<path fill="none" stroke="black" d="M628.62,-292.92C635.49,-284.48 642.36,-276.08 649,-268 653.7,-262.27 658.59,-256.36 663.51,-250.42"/>
+<ellipse fill="black" stroke="black" cx="625.89" cy="-296.28" rx="4" ry="4"/>
 <text text-anchor="middle" x="705" y="-270.6" font-family="Roboto" font-size="8.00"> dataset_id (modelweights)</text>
 </g>
 <!-- backend_app_models_ModelWeights&#45;&gt;backend_app_models_Model -->
 <g id="edge12" class="edge">
 <title>backend_app_models_ModelWeights&#45;&gt;backend_app_models_Model</title>
-<path fill="none" stroke="black" d="M525.67,-304.38C523.35,-295.24 521.37,-285.98 520,-277 519.39,-273.05 519.98,-272 520,-268 520.1,-249.2 520.33,-228.21 520.54,-211.14"/>
-<ellipse fill="black" stroke="black" cx="526.77" cy="-308.51" rx="4" ry="4"/>
+<path fill="none" stroke="black" d="M522.61,-291.23C521.6,-286.45 520.72,-281.69 520,-277 519.39,-273.05 519.98,-272 520,-268 520.1,-249.2 520.33,-228.21 520.54,-211.14"/>
+<ellipse fill="black" stroke="black" cx="523.54" cy="-295.39" rx="4" ry="4"/>
 <text text-anchor="middle" x="573" y="-270.6" font-family="Roboto" font-size="8.00"> model_id (modelweights)</text>
 </g>
 <!-- backend_app_models_ModelWeights&#45;&gt;backend_app_models_ModelWeights -->
@@ -696,7 +708,7 @@
 <!-- backend_app_models_Training&#45;&gt;backend_app_models_ModelWeights -->
 <g id="edge19" class="edge">
 <title>backend_app_models_Training&#45;&gt;backend_app_models_ModelWeights</title>
-<path fill="none" stroke="black" d="M461.65,-534.03C462.03,-521.25 463.78,-507.92 468,-496 472.33,-483.77 478.67,-471.86 485.96,-460.7"/>
+<path fill="none" stroke="black" d="M461.65,-534.03C462.03,-521.25 463.78,-507.92 468,-496 470.69,-488.41 474.15,-480.95 478.13,-473.71"/>
 <ellipse fill="black" stroke="black" cx="461.61" cy="-538.32" rx="4" ry="4"/>
 <text text-anchor="middle" x="524" y="-498.6" font-family="Roboto" font-size="8.00"> modelweights_id (training)</text>
 </g>
@@ -736,8 +748,8 @@
 <text text-anchor="start" x="1240" y="-947.6" font-family="Roboto" font-size="8.00">value</text>
 <text text-anchor="start" x="1263" y="-947.6" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <text text-anchor="start" x="1306" y="-947.6" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="1316" y="-947.6" font-family="Roboto" font-size="8.00">CharField</text>
-<text text-anchor="start" x="1354" y="-947.6" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="1316" y="-947.6" font-family="Roboto" font-size="8.00">TextField</text>
+<text text-anchor="start" x="1351" y="-947.6" font-family="Roboto" font-size="8.00"> &#160;&#160;&#160;</text>
 <polygon fill="none" stroke="black" points="1226.5,-941.5 1226.5,-1016.5 1399.5,-1016.5 1399.5,-941.5 1226.5,-941.5"/>
 </g>
 <!-- backend_app_models_TrainingSetting&#45;&gt;backend_app_models_Property -->
