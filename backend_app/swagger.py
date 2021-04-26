@@ -106,12 +106,16 @@ ModelWeightsViewSet_create_request = openapi.Schema(
     type=openapi.TYPE_OBJECT,
     required=['name', 'model_id'],
     properties={
-        'name': openapi.Schema(type=openapi.TYPE_STRING),
+        'name': openapi.Schema(type=openapi.TYPE_STRING, description='The name of the weight'),
         'model_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of related model."),
         'dataset_id': openapi.Schema(type=openapi.TYPE_INTEGER,
                                      description="If given the current model weights has been obtained on that dataset."),
         'onnx_url': openapi.Schema(type=openapi.TYPE_STRING, pattern="https://*", description="ONNX file URL"),
         'onnx_data': openapi.Schema(type=openapi.TYPE_STRING, description="form-data submitted"),
+        'layer_to_remove': openapi.Schema(type=openapi.TYPE_STRING,
+                                          description="Name of the layer to remove for finetuning"),
+        'classes': openapi.Schema(type=openapi.TYPE_STRING,
+                                  description="List of dataset classes on which the weight has been trained"),
     },
 )
 
