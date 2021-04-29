@@ -1012,15 +1012,26 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
         if not models.ProjectPermission.objects.filter(user=user, project=project_id).exists():
             raise exceptions.PermissionDenied({'Error': f"'{user}' has no permission to view Project {project_id}"})
         self.queryset = self.queryset.filter(project_id=project_id)
+        # Retrieve optional modelweight_id
+        modelweights_id = self.request.query_params.get('modelweights_id')
+        if modelweights_id:
+            if not models.ModelWeightsPermission.objects.filter(user=user, modelweight=modelweights_id).exists():
+                raise exceptions.PermissionDenied({'Error': f"'{user}' has no permission to view Weight {modelweights_id}"})
+            else:
+                self.queryset = self.queryset.filter(modelweights_id=modelweights_id)
         return self.queryset
 
     @swagger_auto_schema(manual_parameters=[
         openapi.Parameter('project_id', openapi.IN_QUERY, "Integer representing a Project",
-                          required=True, type=openapi.TYPE_INTEGER)])
+                          required=True, type=openapi.TYPE_INTEGER),
+        openapi.Parameter('modelweights_id', openapi.IN_QUERY, "Integer representing a Weight",
+                          required=False, type=openapi.TYPE_INTEGER),
+    ])
     def list(self, request, *args, **kwargs):
         """Returns past training processes
 
         This API returns past trainings performed within the `project_id` project.
+        The optional parameter `modelweights_id` filters trainings of for a fixed Project and ModelWeight.
         """
         return super().list(request, *args, **kwargs)
 
