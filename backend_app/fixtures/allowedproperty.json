@@ -326,7 +326,7 @@
       "model_id": 3,
       "dataset_id": 2,
       "allowed_value": null,
-      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugMirror p=0.5\n    AugFlip p=0.5\n    AugRotate angle=[-5,5]\n    AugAdditivePoissonNoise lambda=[0,0.51]\n    AugGammaContrast gamma=[0.5,1.5]\n    AugGaussianBlur sigma=[0.0,0.8]\n    AugCoarseDropout p=[0,0.03] drop_size=[0.0,0.05] per_channel=0.25\n    AugToFloat32 divisor=255\nend"
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugMirror p=0.5\n    AugFlip p=0.5\n    AugRotate angle=[-5,5]\n    AugAdditivePoissonNoise lambda=[0,0.51]\n    AugGammaContrast gamma=[0.5,1.5]\n    AugGaussianBlur sigma=[0.0,0.8]\n    AugCoarseDropout p=[0,0.03] drop_size=[0.0,0.05] per_channel=0.25\n    AugToFloat32 divisor=255 divisor_gt=255\nend"
     }
   },
   {
@@ -337,7 +337,7 @@
       "model_id": 3,
       "dataset_id": 2,
       "allowed_value": null,
-      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255 divisor_gt=255\nend"
     }
   },
   {
@@ -348,7 +348,7 @@
       "model_id": 3,
       "dataset_id": 2,
       "allowed_value": null,
-      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255\nend"
+      "default_value": "SequentialAugmentationContainer\n    AugResizeDim dims=(192,192) interp=\"cubic\"\n    AugToFloat32 divisor=255 divisor_gt=255\nend"
     }
   }
 ]
