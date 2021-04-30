@@ -754,7 +754,7 @@ class StatusView(views.APIView):
 
         if full:
             try:
-                index = lines.index("Reading dataset")
+                index = lines_split.index("Reading dataset")
                 process_data = ','.join(lines_split[index + 1:last_line]) if full_return_string else lines_split[
                                                                                                      index + 1:last_line]
             except ValueError:

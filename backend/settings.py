@@ -209,6 +209,7 @@ CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = env('RABBITMQ_BROKER_URL')
+CELERY_TASK_TRACK_STARTED = True
 
 # Only add pickle to this list if your broker is secured
 # from unwanted access (see userguide/security.html)
