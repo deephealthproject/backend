@@ -750,7 +750,7 @@ class StatusView(views.APIView):
                     'process_data': str(process.result),
                 }
             }
-            return Response(data=res, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data=res, status=status.HTTP_200_OK)
 
         if full:
             try:
