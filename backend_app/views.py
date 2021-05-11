@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
 from deeplearning.utils import FINAL_LAYER, createConfig
-
+from urllib.parse import urlparse
 
 def check_permission(instance, user, operation):
     excp = exceptions.PermissionDenied({'Error': f"'{user}' has no permission to {operation} {str(instance)}"})
@@ -453,7 +453,8 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
 
         This API creates a new model weight which is defined through a ONNX file.
         The ONNX can be uploaded using the `onnx_data` body field or can be retrieved by the backend providing the \
-        `onnx_url` field.
+        `onnx_url` field with values like `https://my_onnx_model.onnx` or `file:///home/my_onnx_model.onnx`.
+
         The `dataset_id` optional parameter indicates that the model has been already trained on a certain dataset. \
         The backend will then create a new ModelWeight instance for these Model and Dataset.
 
@@ -464,33 +465,40 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             name = serializer.validated_data.get('name')
-            if Path(f'{settings.MODELS_DIR}/{name}.onnx').exists():
-                # If file already exists append a suffix
-                model_out_path = f'{settings.MODELS_DIR}/{name}_{uuid.uuid4().hex}.onnx'
-            else:
-                model_out_path = f'{settings.MODELS_DIR}/{name}.onnx'
+            suffix = ''
+            if Path(f'{settings.MODELS_DIR}/{name}.onnx').exists() or \
+                    models.ModelWeights.objects.filter(name=name):
+                suffix = '_' + uuid.uuid4().hex
+
+            # If name or file path already exists append a suffix
+            model_out_path = f'{settings.MODELS_DIR}/{name}{suffix}.onnx'
+            name = name + suffix
+
             process_id = None
+            response = {"result": "ok"}
             if serializer.validated_data.get('onnx_url'):
                 # download onnx file from url
-                try:
-                    url = serializer.validated_data.pop('onnx_url')
-                    process_id = onnx_download.delay(url, model_out_path)
-                    process_id = process_id.id
-                    response = {"result": "ok", "process_id": process_id}
-                except requests.exceptions.RequestException:
-                    # URL malformed
-                    return Response({'error': 'URL is malformed'}, status=status.HTTP_400_BAD_REQUEST)
+                url = serializer.validated_data.pop('onnx_url')
+                if urlparse(url).scheme == 'file':
+                    model_out_path = urlparse(url).netloc
+                else:
+                    try:
+                        process_id = onnx_download.delay(url, model_out_path)
+                        process_id = process_id.id
+                        response["process_id"] = process_id
+                    except requests.exceptions.RequestException:
+                        # URL malformed
+                        return Response({'error': 'URL is malformed'}, status=status.HTTP_400_BAD_REQUEST)
             elif serializer.validated_data.get('onnx_data'):
                 onnx_data = serializer.validated_data.pop('onnx_data')
                 # onnx file was uploaded
                 onnx_data = onnx_data.read()
                 with open(model_out_path, 'wb') as f:
                     f.write(onnx_data)
-                response = {"result": "ok"}
             else:
                 return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            weight = serializer.save(location=model_out_path, process_id=process_id, is_active=True)
+            weight = serializer.save(name=name, location=model_out_path, process_id=process_id, is_active=True)
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
 
             response['weight_id'] = weight.id
@@ -1016,7 +1024,8 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
         modelweights_id = self.request.query_params.get('modelweights_id')
         if modelweights_id:
             if not models.ModelWeightsPermission.objects.filter(user=user, modelweight=modelweights_id).exists():
-                raise exceptions.PermissionDenied({'Error': f"'{user}' has no permission to view Weight {modelweights_id}"})
+                raise exceptions.PermissionDenied(
+                    {'Error': f"'{user}' has no permission to view Weight {modelweights_id}"})
             else:
                 self.queryset = self.queryset.filter(modelweights_id=modelweights_id)
         return self.queryset
