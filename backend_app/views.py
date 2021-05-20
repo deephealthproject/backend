@@ -972,7 +972,7 @@ class TrainViewSet(views.APIView):
             props_general = models.Property.objects.all()
             for p in props_general:
                 if hyperparams.get(p.name) is None:
-                    hyperparams[p.name] = p.default
+                    hyperparams[p.name] = p.default or ''
 
             # Overwrite hyperparams with ones provided by the user
             props = serializer.data['properties']
