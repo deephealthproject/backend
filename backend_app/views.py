@@ -883,7 +883,8 @@ class TrainViewSet(views.APIView):
                 # --> Same layer_to_remove of the parent
                 weight.layer_to_remove = weight.pretrained_on.layer_to_remove
             elif weight.pretrained_on.dataset_id is None and \
-                    weight.classes == weight.dataset_id.classes:
+                    weight.classes == weight.dataset_id.classes \
+                    and weight.classes is not None and weight.dataset_id.classes is not None:
                 # Current weight has classes which are the same of the current dataset
                 # it means that you should not remove last layer (maybe)
                 # --> Same layer_to_remove of the parent and thus last layer will not be removed
