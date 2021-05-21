@@ -297,7 +297,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
 
 class PropertyTrainSerializer(serializers.ModelSerializer):
-    value = serializers.CharField()
+    value = serializers.CharField(allow_blank=True)
 
     class Meta:
         model = models.Property

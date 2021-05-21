@@ -974,6 +974,8 @@ class TrainViewSet(views.APIView):
             # Overwrite hyperparams with ones provided by the user
             props = serializer.data['properties']
             for p in props:
+                if str(p['value']) == '':
+                    continue
                 name = p['name']
                 name = [name, name.replace('_', ' ')]
                 prop_tmp = models.Property.objects.filter(
