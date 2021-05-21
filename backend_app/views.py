@@ -864,9 +864,9 @@ class TrainViewSet(views.APIView):
         if serializer.is_valid():
             # Create a new modelweights and start training
             weight = models.ModelWeights()
-            weight.dataset_id_id = serializer.validated_data['dataset_id']
+            weight.dataset_id = serializer.validated_data['dataset_id']
             weight.classes = weight.dataset_id.classes  # Inherit from dataset
-            weight.pretrained_on_id = serializer.validated_data['weights_id']
+            weight.pretrained_on = serializer.validated_data['weights_id']
             # Inherit model and layer_to_remove from weight used as pretraining
             weight.model_id = weight.pretrained_on.model_id
             if weight.pretrained_on.dataset_id == weight.dataset_id:
@@ -914,10 +914,6 @@ class TrainViewSet(views.APIView):
                 error = {"Error": f"Dataset with id `{weight.dataset_id_id}` does not exist"}
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            if not models.Project.objects.filter(id=serializer.validated_data['project_id']).exists():
-                error = {"Error": f"Project with id `{serializer.validated_data['project_id']}` does not exist"}
-                return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
             # Check if dataset and model are both for same task
             if weight.model_id.task_id != weight.dataset_id.task_id:
                 error = {"Error": f"Model and dataset must belong to the same task"}
@@ -929,7 +925,7 @@ class TrainViewSet(views.APIView):
                 error = {"Error": f"The {user.username} user has no permission to access the chosen dataset"}
                 return Response(error, status=status.HTTP_401_UNAUTHORIZED)
 
-            project = models.Project.objects.get(id=serializer.validated_data['project_id'])
+            project = serializer.validated_data['project_id']
             task_name = project.task_id.name.lower()
             # weight.task_id = project.task_id
 

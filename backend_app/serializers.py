@@ -326,9 +326,9 @@ class TrainingSerializer(serializers.ModelSerializer):
 
 
 class TrainSerializer(serializers.Serializer):
-    dataset_id = serializers.IntegerField()
-    weights_id = serializers.IntegerField()
-    project_id = serializers.IntegerField()
+    dataset_id = serializers.PrimaryKeyRelatedField(queryset=models.Dataset.objects.all())
+    weights_id = serializers.PrimaryKeyRelatedField(queryset=models.ModelWeights.objects.all())
+    project_id = serializers.PrimaryKeyRelatedField(queryset=models.Project.objects.all())
     properties = PropertyTrainSerializer(many=True)
 
     task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
