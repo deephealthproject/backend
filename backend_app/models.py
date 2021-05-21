@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, pre_save
 from django.dispatch import receiver
 
 
@@ -267,10 +267,22 @@ class TrainingSetting(models.Model):
 @receiver(pre_delete, sender=Training, dispatch_uid='training_delete_signal')
 @receiver(pre_delete, sender=Inference, dispatch_uid='inference_delete_signal')
 @receiver(pre_delete, sender=Dataset, dispatch_uid='dataset_delete_signal')
-def delete_files(sender, instance, **kwargs):
+def delete_files(sender, instance, *args, **kwargs):
     fields_to_delete = ['logfile', 'outputfile', 'location', 'path']
     for f in fields_to_delete:
         if hasattr(instance, f):
             f = eval(f'instance.{f}')
             if os.path.isfile(f):
                 os.remove(f)
+
+
+@receiver(pre_save, sender=AllowedProperty, dispatch_uid='allowedproperty_save_signal')
+@receiver(pre_save, sender=Property, dispatch_uid='property_save_signal')
+def check_escaping(sender, instance, *args, **kwargs):
+    fields = ['value', 'allowed_value', 'default_value']
+    for f in fields:
+        if hasattr(instance, f):
+            value = getattr(instance, f)
+            # value = value.replace('\r', '')
+            value = bytes(value.replace('\r', ''), "utf-8").decode("unicode_escape")
+            setattr(instance, f, value)
