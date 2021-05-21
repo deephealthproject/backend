@@ -201,6 +201,7 @@ MEDIA_URL = env('MEDIA_URL')
 MEDIA_ROOT = OUTPUTS_DIR
 
 BASE_URL = 'backend'
+#BASE_URL = 'backend_dev'
 LOGIN_REDIRECT_URL = f'/{BASE_URL}/'
 LOGIN_URL = f'/{BASE_URL}/auth/login/'
 
@@ -210,6 +211,7 @@ CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = env('RABBITMQ_BROKER_URL')
 CELERY_TASK_TRACK_STARTED = True
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 10
 
 # Only add pickle to this list if your broker is secured
 # from unwanted access (see userguide/security.html)

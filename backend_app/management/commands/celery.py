@@ -15,10 +15,10 @@ class Command(BaseCommand):
     def _restart_celery(cls):
         if sys.platform == "win32":
             cls.run('taskkill /f /t /im celery.exe')
-            cls.run('celery --app backend --max-tasks-per-child 10 --loglevel info --pool solo')
+            cls.run('celery --app backend --loglevel info --pool solo')
         else:  # probably ok for linux2, cygwin and darwin. Not sure about os2, os2emx, riscos and atheos
             cls.run('pkill celery')
-            cls.run('celery --app backend worker --max-tasks-per-child 10 --loglevel info')
+            cls.run('celery --app backend worker --loglevel info')
 
     @staticmethod
     def run(cmd):
