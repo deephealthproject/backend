@@ -119,11 +119,18 @@ class InferenceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id', 'task_manager', 'env']
-        read_only_fields = ['celery_id', 'logfile', 'outputfile', 'stats']
+        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id', 'task_manager', 'env', 'created',
+                  'updated']
         extra_kwargs = {
             'task_manager': {'write_only': True},
             'env': {'write_only': True, 'required': False},
+
+            'celery_id': {'read_only': True},
+            'logfile': {'read_only': True},
+            'outputfile': {'read_only': True},
+            'stats': {'read_only': True},
+            'created': {'read_only': True},
+            'updated': {'read_only': True},
         }
 
     def validate(self, data):
@@ -322,7 +329,11 @@ class TaskSerializer(serializers.ModelSerializer):
 class TrainingSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Training
-        fields = ['id', 'celery_id', 'project_id', 'modelweights_id']
+        fields = ['id', 'celery_id', 'project_id', 'modelweights_id', 'created', 'updated']
+        extra_kwargs = {
+            'created': {'read_only': True},
+            'updated': {'read_only': True},
+        }
 
 
 class TrainSerializer(serializers.Serializer):

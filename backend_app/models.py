@@ -41,7 +41,7 @@ class AllowedProperty(models.Model):
                                    help_text='Dataset linked to this custom values')
 
     allowed_value = models.TextField(null=True, blank=True,
-                                     help_text='List or string of allowed values for this combination of '
+                                     help_text='Comma-separated string of allowed values for this combination of '
                                                'property-model[-dataset]')
     default_value = models.TextField(null=True, blank=True,
                                      help_text='The default value for this combination of property-model[-dataset]')
@@ -108,6 +108,9 @@ class Inference(models.Model):
 
     project_id = models.ForeignKey('Project', on_delete=models.CASCADE,
                                    help_text='Project on which this inference has been lanched')
+
+    created = models.DateTimeField(auto_now_add=True, help_text='Creation date of a training')
+    updated = models.DateTimeField(auto_now=True, help_text='Date and time of last modification')
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
@@ -237,6 +240,9 @@ class Training(models.Model):
                                         help_text='Weight produced in this learning process')
     project_id = models.ForeignKey('Project', on_delete=models.CASCADE,
                                    help_text='Project in which this training has been launched')
+
+    created = models.DateTimeField(auto_now_add=True, help_text='Creation date of a training')
+    updated = models.DateTimeField(auto_now=True, help_text='Date and time of last modification')
 
     class Meta:
         indexes = [models.Index(fields=['celery_id'])]
