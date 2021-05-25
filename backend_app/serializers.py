@@ -381,7 +381,7 @@ class TrainResponse(serializers.Serializer):
 
 class StatusStatusResponse(serializers.Serializer):
     process_type = serializers.CharField()
-    process_status = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS"])
+    process_status = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS", "REVOKED"])
     process_data = serializers.CharField()
 
 
@@ -391,5 +391,5 @@ class StatusResponse(serializers.Serializer):
 
 
 class ModelStatusResponse(serializers.Serializer):
-    result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS"])
+    result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS", "REVOKED"])
     process_type = serializers.CharField()

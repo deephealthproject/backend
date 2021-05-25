@@ -4,6 +4,7 @@ import os
 import uuid
 from os.path import join as opjoin
 from pathlib import Path
+from urllib.parse import urlparse
 
 import numpy as np
 import requests
@@ -20,7 +21,7 @@ from rest_framework.response import Response
 from backend import celery_app, settings
 from backend_app import mixins as BAMixins, models, serializers, swagger, utils
 from deeplearning.utils import FINAL_LAYER, createConfig
-from urllib.parse import urlparse
+
 
 def check_permission(instance, user, operation):
     excp = exceptions.PermissionDenied({'Error': f"'{user}' has no permission to {operation} {str(instance)}"})
@@ -320,10 +321,11 @@ class ModelWeightsStatusViewSet(views.APIView):
         """Retrieve results about a model upload process
 
         This API provides information about a model upload process. It returns the status of the operation:
-        - PENDING: The task is waiting for execution.
-        - STARTED: The task has been started.
-        - RETRY: The task is to be retried, possibly because of failure.
         - FAILURE: The task raised an exception, or has exceeded the retry limit.
+        - PENDING: The task is waiting for execution.
+        - RETRY: The task is to be retried, possibly because of failure.
+        - REVOKED: The task was revoked.
+        - STARTED: The task has been started.
         - SUCCESS: The task executed successfully.
         """
         if not self.request.query_params.get('process_id'):
@@ -708,11 +710,12 @@ class StatusView(views.APIView):
         execution.
 
         The _process_status_ field can provide different codes:
-         - PENDING: The task is waiting for execution.
-         - STARTED: The task has been started.
-         - RETRY: The task is to be retried, possibly because of failure.
-         - FAILURE: The task raised an exception, or has exceeded the retry limit.
-         - SUCCESS: The task executed successfully.
+        - FAILURE: The task raised an exception, or has exceeded the retry limit.
+        - PENDING: The task is waiting for execution.
+        - RETRY: The task is to be retried, possibly because of failure.
+        - REVOKED: The task was revoked.
+        - STARTED: The task has been started.
+        - SUCCESS: The task executed successfully.
         """
         full_return_string = False
 
@@ -1008,6 +1011,7 @@ class TrainViewSet(views.APIView):
 
 
 class TrainingsViewSet(BAMixins.ParamListModelMixin,
+                       # mixins.DestroyModelMixin,
                        viewsets.GenericViewSet):
     queryset = models.Training.objects.all()
     serializer_class = serializers.TrainingSerializer
@@ -1042,6 +1046,15 @@ class TrainingsViewSet(BAMixins.ParamListModelMixin,
         The optional parameter `modelweights_id` filters trainings of for a fixed Project and ModelWeight.
         """
         return super().list(request, *args, **kwargs)
+
+    # def destroy(self, request, *args, **kwargs):
+    #     """Delete an entire training process
+    #
+    #     Delete a specific training as well as hyperparameters specified and ONNX model exported.
+    #     N.B. The other trainings built upon the current one will be deleted too.
+    #     """
+    #     check_permission(instance=self.get_object(), user=request.user, operation='delete')
+    #     return super().destroy(request, *args, **kwargs)
 
 
 class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
