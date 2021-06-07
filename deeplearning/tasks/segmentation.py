@@ -8,12 +8,11 @@ import numpy as np
 import pyecvl.ecvl as ecvl
 import pyeddl.eddl as eddl
 from celery import shared_task
+from pyeddl._core import eddl as eddl_core
 from pyeddl.tensor import Tensor
 
 from backend import settings
-from backend_app import models as dj_models
-from deeplearning import bindings
-from deeplearning.utils import Logger, dotdict
+from deeplearning.utils import FINAL_LAYER, Logger
 
 
 class Evaluator:
@@ -40,116 +39,120 @@ class Evaluator:
 
 @shared_task
 def segment(args):
-    args = dotdict(args)
     ckpts_dir = opjoin(settings.TRAINING_DIR, 'ckpts')
     outputfile = None
-    inference = None
-    training = None
     output_dir = None
-    net = None
-    train = True if args.mode == 'training' else False
-    batch_size = args.batch_size if args.mode == 'training' else args.test_batch_size
 
-    weight_id = args.weight_id
-    weight = dj_models.ModelWeights.objects.get(id=weight_id)
-    pretrained = None
-    if train:
-        training = dj_models.Training.objects.get(id=args.training_id)
-        if weight.pretrained_on:
-            pretrained = weight.pretrained_on.location
-    else:
-        inference_id = args.inference_id
-        inference = dj_models.Inference.objects.get(id=inference_id)
-        pretrained = weight.location
+    train = True if args.get('mode') == 'training' else False
+    batch_size = args.get('batch_size')
+    epochs = args.get('epochs')
+    task = args.get('task')
+    net = args.get('net')
+    layer_to_remove = net.get('layer_to_remove')
+    dataset = args.get('dataset')
+    weight = args.get('weight')
 
     logger = Logger()
-    if train:
-        logger.open(Path(training.logfile), 'w')
-    else:
-        logger.open(inference.logfile, 'w')
-        outputfile = open(inference.outputfile, 'w')
-        output_dir = inference.outputfile[:-4] + '.d'
+    logger.open(Path(task.get('logfile')), 'w')
+    if not train:
+        outputfile = open(task.get('outputfile'), 'w')
+        output_dir = task.get('outputfile')[:-4] + '.d'
         os.makedirs(output_dir, exist_ok=True)
     # Save args to file
     logger.print_log('args: ' + json.dumps(args, indent=2, sort_keys=True))
 
-    if pretrained:
-        net = eddl.import_net_from_onnx_file(pretrained)
-    else:
-        net = eddl.import_net_from_onnx_file(weight.model_id.location)
-    # if train:
-    #     size = [args.input_h, args.input_w]  # Height, width
-    # else:  # inference
-    #     # get size from input layers
-    #     size = net.layers[0].input.shape[2:]
-    # FIXME EDDL does not allow editing of input layers from onnx
-    # -> always use onnx size as input
-    size = net.layers[0].input.shape[2:]
+    size = [args.get('input_h'), args.get('input_w')]  # Height, width
 
-    try:
-        dataset_path = str(dj_models.Dataset.objects.get(id=args.dataset_id).path)
-    except KeyError:
-        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
-
-    dataset = bindings.dataset_binding.get(args.dataset_id)
-
-    if dataset is None and not train:
-        # Binding does not exist. it's a single image dataset
-        # Use as dataset "stub" the dataset on which model has been trained
-        dataset = bindings.dataset_binding.get(weight.dataset_id.id)
-    elif dataset is None and train:
-        raise Exception(f'Dataset with id: {args.dataset_id} not found in bindings.py')
-
-    basic_augs = ecvl.SequentialAugmentationContainer([ecvl.AugResizeDim(size)])
-    train_augs = basic_augs
-    val_augs = basic_augs
-    test_augs = basic_augs
-    if args.train_augs:
+    # Define augmentations for splits
+    train_augs = None
+    val_augs = None
+    test_augs = None
+    if args.get('train_augs'):
         train_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.train_augs)
+            ecvl.AugmentationFactory.create(args.get('train_augs'))
         ])
-    if args.val_augs:
+    if args.get('val_augs'):
         val_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.val_augs)
+            ecvl.AugmentationFactory.create(args.get('val_augs'))
         ])
-    if args.test_augs:
+    if args.get('test_augs'):
         test_augs = ecvl.SequentialAugmentationContainer([
-            ecvl.AugResizeDim(size), ecvl.AugmentationFactory.create(args.test_augs)
+            ecvl.AugmentationFactory.create(args.get('test_augs'))
         ])
 
-    logger.print_log('Reading dataset'', flush=True')
-    dataset = dataset(dataset_path, batch_size, ecvl.DatasetAugmentations([train_augs, val_augs, test_augs]))
-    d = dataset.d
-    num_classes = dataset.num_classes
-    # in_ = eddl.Input([d.n_channels_, size[0], size[1]])
-    # out_ = eddl.Sigmoid(model(in_, num_classes))
-    # net = eddl.Model([in_], [out_])
+    logger.print_log('Reading dataset')
+    dataset_path = dataset.get('path')
+    ctypes = [eval(dataset.get('ctype'))]
+    if dataset.get('ctype_gt'):
+        ctypes.append(eval(dataset.get('ctype_gt')))
+
+    dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
+    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
+
+    num_classes = len(d.classes_)
+
+    net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
+
+    # Retrieve the name of the input layer
+    l_input = None
+    for l in net.layers:
+        if isinstance(l, eddl_core.LInput):
+            l_input = eddl.getLayer(net, l.name)
+            break
+    assert l_input is not None
+    out_ = eddl.getOut(net)[0]
+
+    # Add activation if not in graph
+    if not isinstance(out_, eddl_core.LActivation):
+        out = eddl.Sigmoid(out_)
+        net = eddl.Model([l_input], [out])
 
     if train:
+        if args.get('remove_layer') and layer_to_remove:
+            l_ = eddl.getLayer(net, layer_to_remove)
+            if num_classes != l_.output.shape[-1]:
+                # Classification layer must be replaced
+                net_layer_names = [l.name for l in net.layers]
+                layer_to_remove_index = net_layer_names.index(layer_to_remove)
+                # Remove all layers from the end to "layer_to_remove"
+                ksize = l_.params[0].shape[2:]  # Retrieve kernel size from the conv to remove
+                for gts_ in range(len(net_layer_names) - 1, layer_to_remove_index - 1, -1):
+                    eddl.removeLayer(net, net_layer_names[gts_])
+                top = eddl.getLayer(net, net_layer_names[layer_to_remove_index - 1])
+                if d.n_channels_ > 3:
+                    out = eddl.Sigmoid(eddl.Conv3D(top, num_classes, ksize, use_bias=True, name=FINAL_LAYER))
+                else:
+                    out = eddl.Sigmoid(eddl.Conv2D(top, num_classes, ksize, use_bias=True, name=FINAL_LAYER))
+                net = eddl.Model([l_input], [out])
+
         eddl.build(
             net,
-            eddl.adam(args.lr),
-            [bindings.losses_binding.get(args.loss)],
-            [bindings.metrics_binding.get(args.metric)],
-            eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU()
+            eddl.adam(args.get('lr')),
+            [args.get('loss')],
+            [args.get('metric')],
+            eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
+            False
         )
+        if args.get('remove_layer') and layer_to_remove:
+            # Force initialization of new layers
+            eddl.initializeLayer(net, FINAL_LAYER)
     else:  # inference
         eddl.build(
             net,
-            o=eddl.adam(args.lr),
-            cs=eddl.CS_GPU([1], mem='low_mem') if args.gpu else eddl.CS_CPU(),
+            o=eddl.adam(args.get('lr')),
+            cs=eddl.CS_GPU([1], mem='low_mem') if args.get('gpu') else eddl.CS_CPU(),
             init_weights=False
         )
+
     net.resize(batch_size)  # resize manually since we don't use "fit"
     eddl.summary(net)
 
     images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
-    if train:
-        gts = Tensor([batch_size, d.n_channels_gt_, size[0], size[1]])
+    gts = Tensor([batch_size, d.n_channels_gt_, size[0], size[1]])
 
     # TODO create gts also in test if they exist
 
-    logger.print_log(f'Starting {args.mode}')
+    logger.print_log(f'Starting {args.get("mode")}')
     if train:
         num_samples_train = len(d.GetSplit(ecvl.SplitType.training))
         num_batches_train = num_samples_train // batch_size
@@ -157,69 +160,69 @@ def segment(args):
         num_batches_val = num_samples_val // batch_size
 
         evaluator = Evaluator()
-        indices = list(range(batch_size))
         miou = -1
-        for e in range(args.epochs):
+        for e in range(epochs):
             eddl.reset_loss(net)
             d.SetSplit(ecvl.SplitType.training)
             s = d.GetSplit()
             random.shuffle(s)
             d.split_.training_ = s
             d.ResetAllBatches()
-            for i in range(num_batches_train):
+
+            for b in range(num_batches_train):
                 d.LoadBatch(images, gts)
-                images.div_(255.0)
-                gts.div_(255.0)
-                eddl.train_batch(net, [images], [gts], indices)
+                eddl.train_batch(net, [images], [gts])
 
                 losses = eddl.get_losses(net)
                 metrics = eddl.get_metrics(net)
-                logger.print_log(f'Train Epoch: {e + 1}/{args.epochs} [{i + 1}/{num_batches_train}]'
-                                 f'{net.losses[0].name}={losses[0]:.3f} - {net.metrics[0].name}={metrics[0]:.3f}')
+                logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_train}]'
+                                 f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
 
             if len(d.split_.validation_) > 0:
-                logger.print_log(f'Validation {e}/{args.epochs}')
-
+                eddl.reset_loss(net)
+                logger.print_log(f'Validation {e}/{epochs}')
                 d.SetSplit(ecvl.SplitType.validation)
                 evaluator.ResetEval()
-                for j in range(num_batches_val):
-                    logger.print_log(f'Val Epoch: {e + 1}/{args.epochs}  [{j + 1}/{num_batches_val}]', end='')
+
+                for b in range(num_batches_val):
                     d.LoadBatch(images, gts)
-                    images.div_(255.0)
-                    gts.div_(255.0)
                     eddl.forward(net, [images])
-                    output = eddl.getOutput(eddl.getOut(net)[0])
-                    for k in range(batch_size):
-                        img_ = output.select([str(k)])
-                        gts_ = gts.select([str(k)])
-                        a, b = np.array(img_, copy=False), np.array(gts_, copy=False)
-                        iou = evaluator.BinaryIoU(a, b)
-                        logger.print_log(f' - IoU: {iou:.6g}')
+                    output = eddl.getOutput(out_)
+                    logger.print_log(f'Validation - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_val}]',
+                                     end='')
+                    for bs in range(batch_size):
+                        img_ = np.array(output.select([str(bs)]), copy=False)
+                        gts_ = np.array(gts.select([str(bs)]), copy=False)
+                        iou = evaluator.BinaryIoU(img_, gts_)
+                        logger.print_log(f' - IoU: {iou:.3f}', end='')
+                    logger.print_log('')
 
                 last_miou = evaluator.MIoU()
-                logger.print_log(f'Val Epoch: {e + 1}/{args.epochs} - MIoU: {last_miou:.6f}')
+                logger.print_log(f'Validation - epoch [{e + 1}/{epochs}] - MIoU: {last_miou:.3f}')
 
                 if last_miou > miou:
                     miou = last_miou
-                    eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight_id}.onnx'))
+                    eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
                     logger.print_log('Weights saved')
-
             else:
-                eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight_id}.onnx'))
+                eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
                 logger.print_log('Weights saved')
     else:
         d.SetSplit(ecvl.SplitType.test)
         num_samples_test = len(d.GetSplit())
         num_batches_test = num_samples_test // batch_size
-        for j in range(num_batches_test):
-            logger.print_log(f'Infer Batch {j + 1}/{num_batches_test}')
-            d.LoadBatch(images)
-            images.div_(255.0)
-            eddl.forward(net, [images])
-            preds = eddl.getOut(net)[0]
+        d.ResetAllBatches()
+        out_layer = eddl.getOut(net)[0]
 
-            for k in range(batch_size):
-                pred = preds.select([str(k)])
+        for b in range(num_batches_test):
+            d.LoadBatch(images)
+            eddl.forward(net, [images])
+
+            logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
+            output = eddl.getOutput(out_layer)
+
+            for bs in range(batch_size):
+                pred = output.select([str(bs)])
                 # gt = gts.select([str(k)])
                 # pred_np, gt = np.array(pred, copy=False), np.array(gt, copy=False)
                 pred_np = np.array(pred, copy=False)
@@ -229,7 +232,7 @@ def segment(args):
                 pred_np[pred_np >= 0.5] = 255
                 pred_np[pred_np < 0.5] = 0
 
-                sample_index = d.GetSplit()[j * batch_size + k]
+                sample_index = d.GetSplit()[b * batch_size + bs]
                 orig_image_path = d.samples_[sample_index].location_[0]
                 orig_image_name = Path(orig_image_path).name.split('.')
                 orig_image_name = orig_image_name[0] + '.png'

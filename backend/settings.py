@@ -52,6 +52,9 @@ INSTALLED_APPS = [
     'social_django',
     'rest_framework_social_oauth2',
     'django_rest_passwordreset',
+    'auth_app.apps.AuthAppConfig',
+    'streamflow_app.apps.SFAppConfig',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -74,13 +77,17 @@ SWAGGER_SETTINGS = {
 }
 
 REST_FRAMEWORK = {
+    'DATETIME_FORMAT': "%Y-%m-%dT%H:%M:%S",
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_social_oauth2.authentication.SocialAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    # 'DEFAULT_FILTER_BACKENDS': (
+    #     'django_filters.rest_framework.DjangoFilterBackend',
+    # ),
 }
 
 OAUTH2_PROVIDER = {
@@ -175,7 +182,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
-APPEND_SLASH = False
+APPEND_SLASH = True
 
 # Set data paths
 DATA_DIR = env('DATA_DIR')
@@ -195,6 +202,7 @@ MEDIA_URL = env('MEDIA_URL')
 MEDIA_ROOT = OUTPUTS_DIR
 
 BASE_URL = 'backend'
+#BASE_URL = 'backend_dev'
 LOGIN_REDIRECT_URL = f'/{BASE_URL}/'
 LOGIN_URL = f'/{BASE_URL}/auth/login/'
 
@@ -203,6 +211,8 @@ CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST')
 
 # CELERY_BROKER_URL = 'amqp://guest:guest@localhost'
 CELERY_BROKER_URL = env('RABBITMQ_BROKER_URL')
+CELERY_TASK_TRACK_STARTED = True
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 10
 
 # Only add pickle to this list if your broker is secured
 # from unwanted access (see userguide/security.html)

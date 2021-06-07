@@ -2,7 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 from oauth2_provider.urls import management_urlpatterns
 
-from auth import views
+from auth_app import views
 
 user_list = views.UsersViewSet.as_view({
     'get': 'list'

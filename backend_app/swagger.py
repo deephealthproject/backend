@@ -56,7 +56,10 @@ DatasetViewSet_create_response = {
                                     "task_id": 2,
                                     "users": [
                                         {"username": "dhtest", "permission": "OWN"}
-                                    ]
+                                    ],
+                                    "ctype": "RGB",
+                                    "ctype_gt": "GRAY",
+                                    "classes": "0,1,2,3,4,5,6,7"
                                 }
                             }),
     '400': openapi.Response('Something is wrong in the request. Details in `error`.',
@@ -87,7 +90,7 @@ inferences_post_responses = {
                                     "error": "Non existing weights_id"
                                 }})
 }
-ModelViewSet_create_response = {
+ModelWeightsViewSet_create_response = {
     '200': openapi.Response(
         'On a successful operation, it returns the `process_id`, used for polling the operation status.',
         serializers.InferenceResponseSerializer,
@@ -99,16 +102,20 @@ ModelViewSet_create_response = {
         }),
 }
 
-ModelViewSet_create_request = openapi.Schema(
+ModelWeightsViewSet_create_request = openapi.Schema(
     type=openapi.TYPE_OBJECT,
-    required=['name', 'task_id'],
+    required=['name', 'model_id'],
     properties={
-        'name': openapi.Schema(type=openapi.TYPE_STRING),
-        'task_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        'name': openapi.Schema(type=openapi.TYPE_STRING, description='The name of the weight'),
+        'model_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID of related model."),
         'dataset_id': openapi.Schema(type=openapi.TYPE_INTEGER,
-                                     description="If given the current model has been already trained on that dataset."),
+                                     description="If given the current model weights has been obtained on that dataset."),
         'onnx_url': openapi.Schema(type=openapi.TYPE_STRING, pattern="https://*", description="ONNX file URL"),
         'onnx_data': openapi.Schema(type=openapi.TYPE_STRING, description="form-data submitted"),
+        'layer_to_remove': openapi.Schema(type=openapi.TYPE_STRING,
+                                          description="Name of the layer to remove for finetuning"),
+        'classes': openapi.Schema(type=openapi.TYPE_STRING,
+                                  description="List of dataset classes on which the weight has been trained"),
     },
 )
 
@@ -130,10 +137,10 @@ ModelWeightsViewSet_update_request = openapi.Schema(
 )
 
 ModelWeightsViewSet_list_retrieve_body = {
-    "id": 384,
-    "name": "Pneumothorax",
-    "model_id": 5,
-    "dataset_id": 152,
+    "id": 8,
+    "name": "ResNet50-pytorch-imagenet",
+    "model_id": 4,
+    "dataset_id": 3,
     "pretrained_on": None,
     "public": False,
     "users": [
@@ -141,8 +148,11 @@ ModelWeightsViewSet_list_retrieve_body = {
             "username": "dhtest",
             "permission": "OWN"
         }
-    ]
+    ],
+    "process_id": "90f6747e-9bca-4c2d-887a-10fdaddbe5d2",
+    "layer_to_remove": "Gemm_174"
 }
+
 ModelWeightsViewSet_list_request = {
     '200': openapi.Response('Successful operation',
                             serializers.ModelWeightsSerializer(many=True),
@@ -160,8 +170,8 @@ ModelWeightsViewSet_retrieve_request = {
 ModelStatusView_get_response = {
     '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
         "application/json": {
+            'process_type': 'Model Weight downloading',
             "result": "SUCCESS",
-            'process_type': 'Model uploading'
         }
     })
 }
@@ -276,8 +286,19 @@ StatusView_get_response = {
                                     "result": "ok",
                                     "status": {
                                         "process_type": "training",
-                                        "process_status": "finished",
-                                        "process_data": "Train Epoch: 1/2 [1/30000]categorical_cross_entropy=1.130 - categorical_accuracy=0.121"
+                                        "process_status": "SUCCESS",
+                                        "process_data": "Validation - epoch [70/70] - batch [40/40] - loss=0.857 - metric=0.820"
+                                    }
+                                }
+                            }),
+    '500': openapi.Response('Status of a process which raised an error', serializers.StatusResponse(),
+                            examples={"application/json":
+                                {
+                                    "result": "error",
+                                    "status": {
+                                        "process_type": "training",
+                                        "process_status": "FAILURE",
+                                        "process_data": "[Error]: Incompatible dimensions"
                                     }
                                 }
                             }),
@@ -287,7 +308,7 @@ StatusView_get_response = {
                                     "result": "error",
                                     "error": "Process not found."
                                 }
-                            })
+                            }),
 }
 
 StopProcessViewSet_post_response = {

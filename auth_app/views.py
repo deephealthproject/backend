@@ -10,7 +10,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status, views, viewsets
 from rest_framework.response import Response
 
-from auth import serializers, swagger
+from auth_app import serializers, swagger
 from backend import settings
 
 
@@ -120,6 +120,10 @@ class UserView(generics.CreateAPIView,
         This method updates the user information.
         """
         return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(auto_schema=None)  # Remove swagger docs
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
 
 
 @receiver(reset_password_token_created)

@@ -1,12 +1,13 @@
+from typing import Dict, List
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import exceptions
 from rest_framework import serializers
 from rest_framework.utils import model_meta
 
-from auth import serializers as auth_serializers
 from backend_app import models
-from rest_framework import exceptions
-from typing import List, Dict
+from streamflow_app import serializers as sf_serializers
 
 
 class ReadWriteSerializerMethodField(serializers.SerializerMethodField):
@@ -95,8 +96,12 @@ class DatasetSerializer(M2MSerializer):
 
     class Meta:
         model = models.Dataset
-        fields = ['id', 'name', 'path', 'task_id', 'users', 'public']
-        write_only_fields = ['name', 'path', 'task_id']  # Only for post
+        fields = ['id', 'name', 'path', 'task_id', 'users', 'public', 'ctype', 'ctype_gt', 'classes']
+        extra_kwargs = {
+            'ctype': {'required': False},
+            'ctype_gt': {'required': False},
+            'classes': {'read_only': True},
+        }
 
     def create(self, validated_data):
         users = validated_data.pop('users')
@@ -109,47 +114,84 @@ class DatasetSerializer(M2MSerializer):
 
 
 class InferenceSerializer(serializers.ModelSerializer):
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
+    env = sf_serializers.SFEnvSerializer(required=False)
+
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id']
-        read_only_fields = ['celery_id', 'logfile', 'outputfile', 'stats']
+        fields = ['project_id', 'modelweights_id', 'dataset_id', 'celery_id', 'task_manager', 'env', 'created',
+                  'updated']
+        extra_kwargs = {
+            'task_manager': {'write_only': True},
+            'env': {'write_only': True, 'required': False},
+
+            'celery_id': {'read_only': True},
+            'logfile': {'read_only': True},
+            'outputfile': {'read_only': True},
+            'stats': {'read_only': True},
+            'created': {'read_only': True},
+            'updated': {'read_only': True},
+        }
+
+    def validate(self, data):
+        if data.get('task_manager') == 'STREAMFLOW' and data.get('env') is None:
+            # there must be env
+            raise serializers.ValidationError(
+                {'task_manager': f"`STREAMFLOW` task_manager also requires the `env` parameters."})
+        return data
 
 
 class InferenceSingleSerializer(serializers.ModelSerializer):
-    project_id = serializers.IntegerField()
     image_url = serializers.URLField(required=False)
     image_data = serializers.CharField(required=False)
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
+    env = sf_serializers.SFEnvSerializer(required=False)
 
     class Meta:
         model = models.Inference
-        fields = ['project_id', 'modelweights_id', 'image_url', 'image_data']
+        fields = ['project_id', 'modelweights_id', 'image_url', 'image_data', 'task_manager', 'env']
+        extra_kwargs = {
+            'task_manager': {'write_only': True},
+            'env': {'write_only': True, 'required': False},
+        }
 
     def validate(self, data):
         if not data.get('image_url') and not data.get('image_data'):
             raise serializers.ValidationError("At least one between `image_url` and `image_data` is needed.")
+        if data.get('task_manager') == 'STREAMFLOW' and data.get('env') is None:
+            # there must be env
+            raise serializers.ValidationError(
+                {'task_manager': f"`STREAMFLOW` task_manager also requires the `env` parameters."})
         return data
 
 
 class ModelSerializer(serializers.ModelSerializer):
-    onnx_url = serializers.URLField(required=False)
-    onnx_data = serializers.FileField(required=False)
-    dataset_id = serializers.PrimaryKeyRelatedField(required=False, queryset=models.Dataset.objects.all())
-
     class Meta:
         model = models.Model
-        fields = ['id', 'name', 'task_id', 'onnx_url', 'onnx_data', 'dataset_id', 'celery_id']
-        write_only_fields = ['onnx_url', 'onnx_data', 'dataset_id']
-        read_only_fields = ['celery_id']
-
-    def validate(self, data):
-        if not data.get('onnx_url') and not data.get('onnx_data'):
-            raise serializers.ValidationError("At least one between `onnx_url` and `onnx_data` is needed.")
-        return data
+        fields = ['id', 'name', 'task_id']
 
 
 class ModelWeightsPermissionSerializer(PermissionSerializer):
     class Meta(PermissionSerializer.Meta):
         model = models.ModelWeightsPermission
+
+
+class ModelWeightsCreateSerializer(serializers.ModelSerializer):
+    onnx_url = serializers.URLField(required=False)
+    onnx_data = serializers.FileField(required=False)
+
+    class Meta:
+        model = models.ModelWeights
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'layer_to_remove', 'onnx_url', 'onnx_data', 'classes']
+        extra_kwargs = {
+            'onnx_url': {'write_only': True},
+            'onnx_data': {'write_only': True},
+        }
+
+    def validate(self, data):
+        if not data.get('onnx_url') and not data.get('onnx_data'):
+            raise serializers.ValidationError("At least one between `onnx_url` and `onnx_data` fields is needed.")
+        return data
 
 
 class ModelWeightsSerializer(M2MSerializer):
@@ -159,7 +201,13 @@ class ModelWeightsSerializer(M2MSerializer):
 
     class Meta:
         model = models.ModelWeights
-        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users']
+        fields = ['id', 'name', 'model_id', 'dataset_id', 'pretrained_on', 'public', 'users', 'process_id',
+                  'layer_to_remove', 'is_active', 'classes']
+        extra_kwargs = {
+            'process_id': {'read_only': True},
+            'is_active': {'read_only': True},
+            'classes': {'read_only': True},
+        }
 
     def update(self, instance, validated_data):
         users = validated_data.pop('users')
@@ -256,11 +304,16 @@ class PropertyListSerializer(serializers.ModelSerializer):
 
 
 class PropertyTrainSerializer(serializers.ModelSerializer):
-    value = serializers.CharField()
+    value = serializers.CharField(allow_blank=True)
 
     class Meta:
         model = models.Property
         fields = ['id', 'name', 'value']
+
+
+class StatusSerializer(serializers.Serializer):
+    process_id = serializers.UUIDField()
+    full = serializers.BooleanField(required=False)
 
 
 class StopProcessSerializer(serializers.Serializer):
@@ -276,15 +329,29 @@ class TaskSerializer(serializers.ModelSerializer):
 class TrainingSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Training
-        fields = ['id', 'celery_id', 'project_id', 'modelweights_id']
+        fields = ['id', 'celery_id', 'project_id', 'modelweights_id', 'created', 'updated']
+        extra_kwargs = {
+            'created': {'read_only': True},
+            'updated': {'read_only': True},
+        }
 
 
 class TrainSerializer(serializers.Serializer):
-    dataset_id = serializers.IntegerField()
-    model_id = serializers.IntegerField()
-    project_id = serializers.IntegerField()
+    dataset_id = serializers.PrimaryKeyRelatedField(queryset=models.Dataset.objects.all())
+    weights_id = serializers.PrimaryKeyRelatedField(queryset=models.ModelWeights.objects.all())
+    project_id = serializers.PrimaryKeyRelatedField(queryset=models.Project.objects.all())
     properties = PropertyTrainSerializer(many=True)
-    weights_id = serializers.IntegerField(allow_null=True)
+
+    task_manager = serializers.ChoiceField(choices=['CELERY', 'STREAMFLOW'], write_only=True, default='CELERY')
+    env = sf_serializers.SFEnvSerializer(required=False)
+
+    def validate(self, data):
+        if data.get('task_manager') == 'STREAMFLOW' and data.get('env') is None:
+            # there must be env
+            resp = {'task_manager': f"`STREAMFLOW` task_manager also requires the `env` parameters."}
+            raise serializers.ValidationError(resp)
+
+        return data
 
 
 class TrainingSettingSerializer(serializers.ModelSerializer):
@@ -325,7 +392,7 @@ class TrainResponse(serializers.Serializer):
 
 class StatusStatusResponse(serializers.Serializer):
     process_type = serializers.CharField()
-    process_status = serializers.CharField()
+    process_status = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS", "REVOKED"])
     process_data = serializers.CharField()
 
 
@@ -335,5 +402,5 @@ class StatusResponse(serializers.Serializer):
 
 
 class ModelStatusResponse(serializers.Serializer):
-    result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS"])
+    result = serializers.ChoiceField(["PENDING", "STARTED", "RETRY", "FAILURE", "SUCCESS", "REVOKED"])
     process_type = serializers.CharField()

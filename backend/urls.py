@@ -8,7 +8,8 @@ urlpatterns = [
     path(f'{settings.BASE_URL}/', include('backend_app.urls')),
     path('admin/', admin.site.urls),
     # For authentication
-    path(f'{settings.BASE_URL}/auth/', include('auth.urls')),
+    path(f'{settings.BASE_URL}/auth/', include('auth_app.urls')),
+    path(f'{settings.BASE_URL}/streamflow/', include('streamflow_app.urls')),
 ]
 
 if settings.DEBUG:

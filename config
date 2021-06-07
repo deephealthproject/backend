@@ -43,3 +43,7 @@ DRFSO2_URL_NAMESPACE='social'
 # GitHub configuration
 SOCIAL_AUTH_GITHUB_KEY=''
 SOCIAL_AUTH_GITHUB_SECRET=''
+
+# Email fields for password reset
+EMAIL_HOST_USER=''
+EMAIL_HOST_PASSWORD=''

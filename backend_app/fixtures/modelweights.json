@@ -5,10 +5,12 @@
     "fields": {
       "location": "%MODELS_PATH%/pretrained/lenet_mnist.onnx",
       "name": "LeNet_MNIST",
+      "layer_to_remove": "dense2",
       "model_id": 1,
       "dataset_id": 1,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   },
   {
@@ -17,10 +19,12 @@
     "fields": {
       "location": "%MODELS_PATH%/pretrained/vgg16_in224_isic.onnx",
       "name": "VGG16_ISIC",
+      "layer_to_remove": "dense3",
       "model_id": 2,
       "dataset_id": 3,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   },
   {
@@ -29,10 +33,12 @@
     "fields": {
       "location": "%MODELS_PATH%/pretrained/SegNet_Pneumothorax.onnx",
       "name": "SegNet_Pneumothorax",
+      "layer_to_remove": "conv26",
       "model_id": 3,
       "dataset_id": 4,
       "pretrained_on": null,
-      "public": true
+      "public": true,
+      "is_active": true
     }
   }
 ]
