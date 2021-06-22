@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set PyECVL default version
-PYECVL_TAG="${1:-0.10.0}"
-GPU="${2:-GPU}"
+PYECVL_TAG="${1:-0.10.1}"
+DEVICE="${2:-CUDNN}"
 PROC=$(nproc)
 
 mkdir -p deephealth_libs && cd deephealth_libs
@@ -23,7 +23,7 @@ PYEDDL_ROOT=$(pwd)
 cd third_party/eddl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON -DBUILD_PROTOBUF=ON \
-  -DBUILD_TARGET=${GPU} -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF \
+  -DBUILD_TARGET=${DEVICE} -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF \
   -DBUILD_SUPERBUILD=OFF ..
 cmake --build . --config Release --parallel ${PROC}
 cmake --build . --target install
