@@ -64,6 +64,18 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
         model = models.AllowedProperty
         fields = '__all__'
 
+    def create(self, validated_data):
+        prop = validated_data.get('property_id')
+        model = validated_data.get('model_id')
+        dataset = validated_data.get('dataset_id')
+
+        if models.AllowedProperty.objects.filter(property_id=prop, model_id=model, dataset_id=dataset).exists():
+            # An AllowedProperty already exists for these property-model[-dataset]
+            raise serializers.ValidationError(
+                {"Error": f'An AllowedProperty already exists for property={prop}, model={model}, and dataset={dataset}.'})
+
+        return validated_data
+
 
 class DatasetPermissionSerializer(PermissionSerializer):
     class Meta(PermissionSerializer.Meta):
