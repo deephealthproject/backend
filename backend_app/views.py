@@ -35,18 +35,22 @@ def check_permission(instance, user, operation):
 
 class AllowedPropViewSet(BAMixins.ParamListModelMixin,
                          mixins.CreateModelMixin,
+                         mixins.UpdateModelMixin,
                          viewsets.GenericViewSet):
     queryset = models.AllowedProperty.objects.all()
     serializer_class = serializers.AllowedPropertySerializer
     params = ['model_id', 'property_id']
 
     def get_queryset(self):
-        model_id = self.request.query_params.get('model_id')
-        property_id = self.request.query_params.get('property_id')
-        dataset_id = self.request.query_params.get('dataset_id')
-        self.queryset = models.AllowedProperty.objects.filter(model_id=model_id, property_id=property_id,
-                                                              dataset_id=dataset_id)
-        return self.queryset
+        if self.action in ['list']:
+            model_id = self.request.query_params.get('model_id')
+            property_id = self.request.query_params.get('property_id')
+            dataset_id = self.request.query_params.get('dataset_id')
+            self.queryset = models.AllowedProperty.objects.filter(model_id=model_id, property_id=property_id,
+                                                                  dataset_id=dataset_id)
+            return self.queryset
+        else:
+            return super().get_queryset()
 
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('model_id', openapi.IN_QUERY, "Integer representing a model",
@@ -72,6 +76,17 @@ class AllowedPropViewSet(BAMixins.ParamListModelMixin,
         This method create a new AllowedProperty for a Property and Model and Dataset.
         """
         return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Update the fields of an existing AllowedProperty
+
+        This method updates the fields of an existing AllowedProperty instance.
+        """
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(auto_schema=None)  # Remove swagger docs
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
 
 class DatasetViewSet(mixins.ListModelMixin,
