@@ -64,7 +64,7 @@ class AllowedPropertySerializer(serializers.ModelSerializer):
         model = models.AllowedProperty
         fields = '__all__'
 
-    def create(self, validated_data):
+    def validate(self, validated_data):
         prop = validated_data.get('property_id')
         model = validated_data.get('model_id')
         dataset = validated_data.get('dataset_id')
