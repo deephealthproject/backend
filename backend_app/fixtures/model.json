@@ -22,5 +22,21 @@
       "name": "SegNet",
       "task_id": 2
     }
+  },
+  {
+    "model": "backend_app.model",
+    "pk": 4,
+    "fields": {
+      "name": "U-Net",
+      "task_id": 2
+    }
+  },
+  {
+    "model": "backend_app.model",
+    "pk": 5,
+    "fields": {
+      "name": "ResNet50",
+      "task_id": 1
+    }
   }
 ]
