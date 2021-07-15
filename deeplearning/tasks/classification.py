@@ -70,7 +70,7 @@ def classificate(args):
     if train:
         if args.get('remove_layer') and layer_to_remove:
             l_ = eddl.getLayer(net, layer_to_remove)
-            if num_classes != l_.output.shape[-1]:
+            if num_classes != l_.output.shape[1]:
                 # Classification layer must be replaced
                 net_layer_names = [l.name for l in net.layers]
                 layer_to_remove_index = net_layer_names.index(layer_to_remove)
