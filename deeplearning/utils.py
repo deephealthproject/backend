@@ -51,7 +51,7 @@ def createConfig(task, hyperparams: dict, mode: str) -> Union[bool, Dict]:
     if mode == 'training':
         # Finetuning on an existing weight or train from scratch using that weight
 
-        # If last_layers are different between current onnx and parent -> you will remove 'layer_to_remove'
+        # If last layers have different names means you have to remove it
         remove_layer = task.modelweights_id.layer_to_remove != task.modelweights_id.pretrained_on.layer_to_remove
 
         config.update({

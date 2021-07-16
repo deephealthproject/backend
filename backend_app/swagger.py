@@ -358,7 +358,9 @@ Inference_get_response = {
                                         "project_id": 1,
                                         "modelweights_id": 1,
                                         "dataset_id": 1,
-                                        "celery_id": "ecd0bebd-b134-4690-8bc7-3d22efab6324"
+                                        "celery_id": "ecd0bebd-b134-4690-8bc7-3d22efab6324",
+                                        "created": "2021-05-25T15:34:15",
+                                        "updated": "2021-05-25T17:16:10",
                                     }
                                 ]
                             })

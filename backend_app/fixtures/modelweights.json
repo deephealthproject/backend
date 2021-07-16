@@ -40,5 +40,33 @@
       "public": true,
       "is_active": true
     }
+  },
+  {
+    "model": "backend_app.modelweights",
+    "pk": 4,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/UC12Segm_unet_224.onnx",
+      "name": "UNet_isic_segmentation",
+      "layer_to_remove": "conv2d23",
+      "model_id": 4,
+      "dataset_id": 2,
+      "pretrained_on": null,
+      "public": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "backend_app.modelweights",
+    "pk": 5,
+    "fields": {
+      "location": "%MODELS_PATH%/pretrained/ResNet50-pytorch-imagenet.onnx",
+      "name": "ResNet50-pytorch-imagenet",
+      "layer_to_remove": "Gemm_174",
+      "model_id": 5,
+      "dataset_id": 3,
+      "pretrained_on": null,
+      "public": true,
+      "is_active": true
+    }
   }
 ]
