@@ -79,6 +79,7 @@ Read the [auth/README.md](auth_app/README.md) file for configuring the authentic
 Tutorials, get you started with understanding and using the back-end:
   - [Launch a training process](tutorials/run_a_neural_network_training.md)
   - [Inference with our data](tutorials/inference_using_our_data.md)
+  - [Uploading a new ONNX model](tutorials/uploading_a_new_ONNX_model.md)
 
 The following table contains Postman collections for practicing with the back-end.
 
