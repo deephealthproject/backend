@@ -10,10 +10,9 @@ mkdir -p deephealth_libs && cd deephealth_libs
 # PyECVL cloning
 echo "Cloning PyECVL"
 git clone --recurse-submodules --jobs 2 \
-  https://github.com/deephealthproject/pyecvl.git pyecvl_${PYECVL_TAG}
+  https://github.com/deephealthproject/pyecvl.git pyecvl_${PYECVL_TAG} --branch ${PYECVL_TAG}
 cd pyecvl_${PYECVL_TAG}
 
-git checkout tags/"${PYECVL_TAG}"
 PYECVL_ROOT=$(pwd)
 
 # eddl and PyEDDL
