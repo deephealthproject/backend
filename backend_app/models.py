@@ -289,6 +289,8 @@ def check_escaping(sender, instance, *args, **kwargs):
     for f in fields:
         if hasattr(instance, f):
             value = getattr(instance, f)
+            if value is None:
+                continue
             # value = value.replace('\r', '')
             value = bytes(value.replace('\r', ''), "utf-8").decode("unicode_escape")
             setattr(instance, f, value)
