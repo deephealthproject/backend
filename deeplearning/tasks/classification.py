@@ -1,5 +1,4 @@
 import json
-import random
 from os.path import join as opjoin
 from pathlib import Path
 
@@ -62,7 +61,7 @@ def classificate(args):
         ctypes.append(eval(dataset.get('ctype_gt')))
 
     dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
-    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
+    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes, num_workers=4)
     num_classes = len(d.classes_)
 
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
@@ -120,53 +119,72 @@ def classificate(args):
     logger.print_log(f'Starting {args.get("mode")}')
     if train:
         eddl.set_mode(net, 1)
-        num_samples_train = len(d.GetSplit(ecvl.SplitType.training))
-        num_batches_train = num_samples_train // batch_size
-        num_samples_val = len(d.GetSplit(ecvl.SplitType.validation))
-        num_batches_val = num_samples_val // batch_size
+        num_batches_train = d.GetNumBatches(ecvl.SplitType.training)
+
+        # Look for validation split
+        d_has_validation = any([True for s in d.split_ if s.split_name_ == 'validation'])
+
+        if d_has_validation:
+            num_batches_val = d.GetNumBatches(ecvl.SplitType.validation)
 
         indices = list(range(batch_size))
 
         for e in range(epochs):
             eddl.reset_loss(net)
             d.SetSplit(ecvl.SplitType.training)
-            s = d.GetSplit()
-            random.shuffle(s)
-            d.split_.training_ = s
-            d.ResetAllBatches()
+            d.ResetBatch(shuffle=True)
 
+            # Resize to batch size if we have done a previous resize
+            if d.split_[d.current_split_].last_batch_ != batch_size:
+                # last mini-batch could have different size
+                net.resize(batch_size)
+
+            d.Start()
             for b in range(num_batches_train):
-                d.LoadBatch(images, labels)
-                eddl.train_batch(net, [images], [labels], indices)
+                _, x, y = d.GetBatch()
+
+                # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                if b == num_batches_train - 1 and x.shape[0] != batch_size:
+                    # last mini-batch could have different size
+                    net.resize(x.shape[0])
+                eddl.train_batch(net, [x], [y])
 
                 losses = eddl.get_losses(net)
                 metrics = eddl.get_metrics(net)
 
                 logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_train}]'
                                  f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
-
+            d.Stop()
             eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
             logger.print_log('Weights saved')
 
-            if len(d.split_.validation_) > 0:
+            if d_has_validation:
                 eddl.reset_loss(net)
                 logger.print_log(f'Validation {e}/{epochs}')
                 d.SetSplit(ecvl.SplitType.validation)
+                d.ResetBatch()
 
+                d.Start()
                 for b in range(num_batches_val):
-                    d.LoadBatch(images, labels)
-                    eddl.eval_batch(net, [images], [labels], indices)
+                    _, x, y = d.GetBatch()
+
+                    # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                    if b == num_batches_train - 1 and x.shape[0] != batch_size:
+                        # last mini-batch could have different size
+                        net.resize(x.shape[0])
+
+                    eddl.eval_batch(net, [x], [y])
                     losses = eddl.get_losses(net)
                     metrics = eddl.get_metrics(net)
                     logger.print_log(
                         f'Validation - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_val}]'
                         f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
+                d.Stop()
     else:
         eddl.set_mode(net, 0)
         d.SetSplit(ecvl.SplitType.test)
-        num_samples_test = len(d.GetSplit())
-        num_batches_test = num_samples_test // batch_size
-        d.ResetAllBatches()
+        num_batches_test = d.GetNumBatches(ecvl.SplitType.test)
+        d.ResetBatch()
 
         # Check if this dataset has labels or not
         split_samples_np = np.take(d.samples_, d.GetSplit())
@@ -177,18 +195,30 @@ def classificate(args):
         out_layer = eddl.getOut(net)[0]
         metric_fn = eddl.getMetric(args.get('metric'))
 
+        # Resize to batch size if we have done a previous resize
+        if d.split_[d.current_split_].last_batch_ != batch_size:
+            # last mini-batch could have different size
+            net.resize(batch_size)
+
         if split_samples_have_labels:
             # The dataset has labels for the images, we can show the metric over the predictions
+            d.Start()
             for b in range(num_batches_test):
-                d.LoadBatch(images, labels)
+                _, x, y = d.GetBatch()
+
+                # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                if b == num_batches_test - 1 and x.shape[0] != batch_size:
+                    # last mini-batch could have different size
+                    net.resize(x.shape[0])
+
                 # index = 0
                 # tmp = images.select([str(index)])
                 # tmp.mult_(255)
                 # tmp.save(f"images_test/{b}_{index}.jpg")
-                eddl.forward(net, [images])
+                eddl.forward(net, [x])
 
                 output = eddl.getOutput(out_layer)
-                value = metric_fn.value(labels, output)
+                value = metric_fn.value(y, output)
                 values[b] = value
 
                 logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}] -'
@@ -203,11 +233,18 @@ def classificate(args):
                     pred_name = d.samples_[d.GetSplit()[b * batch_size + bs]].location_
                     # print(f'{pred_name};{pred}')
                     outputfile.write(f'{pred_name};{pred.tolist()}\n')
+            d.Stop()
             logger.print_log(f'Inference - metric={np.mean(values / batch_size):.3f}')
         else:
+            d.Start()
             for b in range(num_batches_test):
-                d.LoadBatch(images)
-                eddl.forward(net, [images])
+                _, x, _ = d.GetBatch()
+
+                # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                if b == num_batches_test - 1 and x.shape[0] != batch_size:
+                    # last mini-batch could have different size
+                    net.resize(x.shape[0])
+                eddl.forward(net, [x])
 
                 logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
                 # Save network predictions
@@ -220,6 +257,7 @@ def classificate(args):
                     pred_name = d.samples_[d.GetSplit()[b * batch_size + bs]].location_
                     # print(f'{pred_name};{pred}')
                     outputfile.write(f'{pred_name};{pred.tolist()}\n')
+            d.Stop()
         outputfile.close()
     logger.print_log('<done>')
     logger.close()
