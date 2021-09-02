@@ -21,6 +21,7 @@ env = environ.Env(
     CELERY_RESULT_BACKEND=(str, 'db+sqlite:///results.sqlite'),
     CELERY_TASK_SERIALIZER=(str, 'json'),
     EDDL_WITH_CUDA=(bool, False),
+    NUM_WORKERS=(int, 4),
 )
 
 env_path = os.environ.get("ENV_PATH", os.path.join(BASE_DIR, "config"))
@@ -231,3 +232,4 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+

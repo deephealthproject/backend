@@ -7,7 +7,6 @@ import pyecvl.ecvl as ecvl
 import pyeddl.eddl as eddl
 from celery import shared_task
 from pyeddl._core import eddl as eddl_core
-from pyeddl.tensor import Tensor
 
 from backend import settings
 from deeplearning.utils import FINAL_LAYER, Logger
@@ -61,7 +60,7 @@ def classificate(args):
         ctypes.append(eval(dataset.get('ctype_gt')))
 
     dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
-    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes, num_workers=4)
+    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes, num_workers=args.get('num_workers'))
     num_classes = len(d.classes_)
 
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])

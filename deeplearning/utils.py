@@ -42,6 +42,7 @@ def createConfig(task, hyperparams: dict, mode: str) -> Union[bool, Dict]:
             'log_interval': 50,
             'save_model': True,
             'gpu': settings.env('EDDL_WITH_CUDA'),
+            'num_workers': settings.env('NUM_WORKERS'),
         }
     except TypeError as e:
         print(f"Type error: {e}")
