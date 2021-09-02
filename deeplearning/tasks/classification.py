@@ -112,10 +112,6 @@ def classificate(args):
     net.resize(batch_size)  # resize manually since we don't use "fit"
     eddl.summary(net)
 
-    # Create tensor for images and labels
-    images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
-    labels = Tensor([batch_size, num_classes])
-
     logger.print_log(f'Starting {args.get("mode")}')
     if train:
         eddl.set_mode(net, 1)
@@ -126,8 +122,6 @@ def classificate(args):
 
         if d_has_validation:
             num_batches_val = d.GetNumBatches(ecvl.SplitType.validation)
-
-        indices = list(range(batch_size))
 
         for e in range(epochs):
             eddl.reset_loss(net)

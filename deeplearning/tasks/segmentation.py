@@ -87,8 +87,7 @@ def segment(args):
         ctypes.append(eval(dataset.get('ctype_gt')))
 
     dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
-    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
-
+    d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes, num_workers=4)
     num_classes = len(d.classes_)
 
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
@@ -154,49 +153,67 @@ def segment(args):
 
     logger.print_log(f'Starting {args.get("mode")}')
     if train:
-        num_samples_train = len(d.GetSplit(ecvl.SplitType.training))
-        num_batches_train = num_samples_train // batch_size
-        num_samples_val = len(d.GetSplit(ecvl.SplitType.validation))
-        num_batches_val = num_samples_val // batch_size
+        num_batches_train = d.GetNumBatches(ecvl.SplitType.training)
+        # Look for validation split
+        d_has_validation = any([True for s in d.split_ if s.split_name_ == 'validation'])
+
+        if d_has_validation:
+            num_batches_val = d.GetNumBatches(ecvl.SplitType.validation)
 
         evaluator = Evaluator()
         miou = -1
         for e in range(epochs):
             eddl.reset_loss(net)
             d.SetSplit(ecvl.SplitType.training)
-            s = d.GetSplit()
-            random.shuffle(s)
-            d.split_.training_ = s
-            d.ResetAllBatches()
+            d.ResetBatch(shuffle=True)
 
+            # Resize to batch size if we have done a previous resize
+            if d.split_[d.current_split_].last_batch_ != batch_size:
+                # last mini-batch could have different size
+                net.resize(batch_size)
+
+            d.Start()
             for b in range(num_batches_train):
                 d.LoadBatch(images, gts)
-                eddl.train_batch(net, [images], [gts])
+                _, x, y = d.GetBatch()
+
+                # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                if b == num_batches_train - 1 and x.shape[0] != batch_size:
+                    # last mini-batch could have different size
+                    net.resize(x.shape[0])
+                eddl.train_batch(net, [x], [y])
 
                 losses = eddl.get_losses(net)
                 metrics = eddl.get_metrics(net)
                 logger.print_log(f'Train - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_train}]'
                                  f' - loss={losses[0]:.3f} - metric={metrics[0]:.3f}')
-
-            if len(d.split_.validation_) > 0:
+            d.Stop()
+            if d_has_validation:
                 eddl.reset_loss(net)
                 logger.print_log(f'Validation {e}/{epochs}')
                 d.SetSplit(ecvl.SplitType.validation)
+                d.ResetBatch()
                 evaluator.ResetEval()
-
+                d.Start()
                 for b in range(num_batches_val):
-                    d.LoadBatch(images, gts)
-                    eddl.forward(net, [images])
+                    _, x, y = d.GetBatch()
+
+                    # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+                    if b == num_batches_train - 1 and x.shape[0] != batch_size:
+                        # last mini-batch could have different size
+                        net.resize(x.shape[0])
+
+                    eddl.forward(net, [x])
                     output = eddl.getOutput(out_)
                     logger.print_log(f'Validation - epoch [{e + 1}/{epochs}] - batch [{b + 1}/{num_batches_val}]',
                                      end='')
                     for bs in range(batch_size):
                         img_ = np.array(output.select([str(bs)]), copy=False)
-                        gts_ = np.array(gts.select([str(bs)]), copy=False)
+                        gts_ = np.array(y.select([str(bs)]), copy=False)
                         iou = evaluator.BinaryIoU(img_, gts_)
                         logger.print_log(f' - IoU: {iou:.3f}', end='')
                     logger.print_log('')
-
+                d.Stop()
                 last_miou = evaluator.MIoU()
                 logger.print_log(f'Validation - epoch [{e + 1}/{epochs}] - MIoU: {last_miou:.3f}')
 
@@ -208,15 +225,26 @@ def segment(args):
                 eddl.save_net_to_onnx_file(net, opjoin(ckpts_dir, f'{weight.get("id")}.onnx'))
                 logger.print_log('Weights saved')
     else:
+        eddl.set_mode(net, 0)
+
         d.SetSplit(ecvl.SplitType.test)
-        num_samples_test = len(d.GetSplit())
-        num_batches_test = num_samples_test // batch_size
+        num_batches_test = d.GetNumBatches(ecvl.SplitType.test)
         d.ResetAllBatches()
         out_layer = eddl.getOut(net)[0]
 
+        # Resize to batch size if we have done a previous resize
+        if d.split_[d.current_split_].last_batch_ != batch_size:
+            # last mini-batch could have different size
+            net.resize(batch_size)
+        d.Start()
         for b in range(num_batches_test):
-            d.LoadBatch(images)
-            eddl.forward(net, [images])
+            _, x, _ = d.GetBatch()
+
+            # If it's the last batch and the number of samples doesn't fit the batch size, resize the network
+            if b == num_batches_test - 1 and x.shape[0] != batch_size:
+                # last mini-batch could have different size
+                net.resize(x.shape[0])
+            eddl.forward(net, [x])
 
             logger.print_log(f'Inference - batch [{b + 1}/{num_batches_test}]')
             output = eddl.getOutput(out_layer)
@@ -249,6 +277,7 @@ def segment(args):
 
                 ecvl.ImWrite(opjoin(output_dir, orig_image_name), img_ecvl)
                 outputfile.write(opjoin(output_dir, orig_image_name) + '\n')
+        d.Stop()
         outputfile.close()
 
         logger.print_log('Inference completed')
