@@ -15,7 +15,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import exceptions, mixins, status, views, viewsets
+from rest_framework import exceptions, mixins, status, views, viewsets, renderers
 from rest_framework.response import Response
 
 from backend import celery_app, settings
@@ -393,6 +393,55 @@ class ModelViewSet(mixins.ListModelMixin,
         Create a new model providing its name and related task_id.
         """
         return super().create(request)
+
+
+class WeightRenderer(renderers.BaseRenderer):
+    media_type = 'force-download'
+    charset = None
+    render_style = 'binary'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data
+
+class ModelWeightsDownloadViewSet(views.APIView):
+    queryset = models.ModelWeights.objects.all()
+    renderer_classes = [WeightRenderer]
+    @swagger_auto_schema(
+        manual_parameters=[openapi.Parameter('modelweights_id', openapi.IN_QUERY,
+                                             "Pass a required modelweights_id.",
+                                             type=openapi.TYPE_INTEGER, required=not models.ModelWeights._meta.get_field('model_id').null)],
+        responses=swagger.ModelWeightsDownloadViewSet_get_response
+    )
+    def get(self, request, *args, **kwargs):
+        if not self.request.query_params.get('modelweights_id'):
+            error = {'Error': f'Missing required parameter `modelweights_id`'}
+            return Response(data=error, status=status.HTTP_400_BAD_REQUEST)
+
+        user = self.request.user
+        modelweights_id = self.request.query_params.get('modelweights_id')
+        # Get public weights
+        self.queryset = self.queryset.filter(id=modelweights_id, public=True, is_active=True)
+        # Get weights of current user
+        q_perm = models.ModelWeights.objects.filter(permission__user=user, id=modelweights_id, public=False,
+                                                    is_active=True)
+        self.queryset = (self.queryset | q_perm).distinct()
+        weight = self.queryset.model.objects.get(id=modelweights_id)
+        if not weight:
+            # Already deleted Weight
+            return Response({'result': 'Weight does not exists.'}, status=status.HTTP_404_NOT_FOUND)
+
+        weight_location = weight.location
+        size = os.path.getsize(weight_location)
+        try:
+            file = open(weight_location, 'rb')
+        except IOError:
+            return Response({'result': weight_location + ' weight cannot be opened.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        response = Response(file, status=status.HTTP_200_OK)
+        response['Content-Length'] = size
+        response['Content-Disposition'] = 'attachment; filename="%s.onnx"' % weight.name
+        return response
 
 
 class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
@@ -822,7 +871,7 @@ class StopProcessViewSet(views.APIView):
             elif training:
                 training = training.first()
                 celery_id = training.celery_id
-                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
+                celery_app.control.revoke(celery_id, terminate=True, signal='SIGTERM')
                 response = {"result": "Training stopped"}
                 # delete the Training entry from db
                 # also delete Training fk in project
@@ -830,7 +879,7 @@ class StopProcessViewSet(views.APIView):
             elif infer:
                 infer = infer.first()
                 celery_id = infer.celery_id
-                celery_app.control.revoke(celery_id, terminate=True, signal='SIGUSR1')
+                celery_app.control.revoke(celery_id, terminate=True, signal='SIGTERM')
                 response = {"result": "Inference stopped"}
                 # delete the Inference entry from db
                 infer.delete()

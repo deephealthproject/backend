@@ -167,6 +167,9 @@ ModelWeightsViewSet_retrieve_request = {
                             )
 }
 
+ModelWeightsDownloadViewSet_get_response = {
+    '200': openapi.Response('Successful download of the model weight')}
+
 ModelStatusView_get_response = {
     '200': openapi.Response('Status of upload process', serializers.ModelStatusResponse, examples={
         "application/json": {

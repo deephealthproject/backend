@@ -29,6 +29,7 @@ router.add_api_view('stopProcess', path('stopProcess', views.StopProcessViewSet.
 router.add_api_view('train', path('train', views.TrainViewSet.as_view(), name='train'))
 router.add_api_view('output', path('output', views.OutputViewSet.as_view(), name='output'))
 router.add_api_view('weightsStatus', path('weightsStatus', views.ModelWeightsStatusViewSet.as_view(), name='weightsStatus'))
+router.add_api_view('weightsDownload', path('weightsDownload', views.ModelWeightsDownloadViewSet.as_view(), name='weightsDownload'))
 
 urlpatterns = [
     path(f'', include(router.urls)),
