@@ -6,7 +6,7 @@
       "property_id": 1,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0.0",
       "default_value": "0.0001"
     }
   },
@@ -17,7 +17,7 @@
       "property_id": 2,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": "cross_entropy,mean_squared_error",
+      "allowed_value": "[cross_entropy,mean_squared_error]",
       "default_value": "cross_entropy"
     }
   },
@@ -28,7 +28,7 @@
       "property_id": 4,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "64"
     }
   },
@@ -39,7 +39,7 @@
       "property_id": 5,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": "accuracy",
+      "allowed_value": "[accuracy]",
       "default_value": "accuracy"
     }
   },
@@ -50,7 +50,7 @@
       "property_id": 6,
       "model_id": 1,
       "dataset_id": 1,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "28"
     }
   },
@@ -61,7 +61,7 @@
       "property_id": 7,
       "model_id": 1,
       "dataset_id": 1,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "28"
     }
   },
@@ -72,7 +72,7 @@
       "property_id": 3,
       "model_id": 1,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "3"
     }
   },
@@ -116,7 +116,7 @@
       "property_id": 1,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0.0",
       "default_value": "0.0001"
     }
   },
@@ -127,7 +127,7 @@
       "property_id": 2,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": "cross_entropy,mean_squared_error",
+      "allowed_value": "[cross_entropy,mean_squared_error]",
       "default_value": "cross_entropy"
     }
   },
@@ -138,7 +138,7 @@
       "property_id": 4,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "4"
     }
   },
@@ -149,7 +149,7 @@
       "property_id": 5,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": "accuracy",
+      "allowed_value": "[accuracy]",
       "default_value": "accuracy"
     }
   },
@@ -160,7 +160,7 @@
       "property_id": 6,
       "model_id": 2,
       "dataset_id": 3,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "224"
     }
   },
@@ -171,7 +171,7 @@
       "property_id": 7,
       "model_id": 2,
       "dataset_id": 3,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "224"
     }
   },
@@ -182,7 +182,7 @@
       "property_id": 3,
       "model_id": 2,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "3"
     }
   },
@@ -226,7 +226,7 @@
       "property_id": 1,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0.0",
       "default_value": "0.001"
     }
   },
@@ -237,7 +237,7 @@
       "property_id": 2,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": "cross_entropy,mean_squared_error",
+      "allowed_value": "[cross_entropy,mean_squared_error]",
       "default_value": "mean_squared_error"
     }
   },
@@ -248,7 +248,7 @@
       "property_id": 4,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "4"
     }
   },
@@ -259,7 +259,7 @@
       "property_id": 5,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": "mean_squared_error,mean_absolute_error,mean_relative_error",
+      "allowed_value": "[mean_squared_error,mean_absolute_error,mean_relative_error]",
       "default_value": "mean_squared_error"
     }
   },
@@ -270,7 +270,7 @@
       "property_id": 3,
       "model_id": 3,
       "dataset_id": null,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "3"
     }
   },
@@ -281,7 +281,7 @@
       "property_id": 6,
       "model_id": 3,
       "dataset_id": 2,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "192"
     }
   },
@@ -292,7 +292,7 @@
       "property_id": 7,
       "model_id": 3,
       "dataset_id": 2,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "192"
     }
   },
@@ -303,7 +303,7 @@
       "property_id": 6,
       "model_id": 3,
       "dataset_id": 4,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "512"
     }
   },
@@ -314,7 +314,7 @@
       "property_id": 7,
       "model_id": 3,
       "dataset_id": 4,
-      "allowed_value": null,
+      "allowed_value": ">0",
       "default_value": "512"
     }
   },
