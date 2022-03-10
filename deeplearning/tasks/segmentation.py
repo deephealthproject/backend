@@ -89,9 +89,8 @@ def segment(args):
     dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
     d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
 
-    num_classes = len(d.classes_)
-
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
+    num_classes = net.lout[0].output.shape[1]
 
     # Retrieve the name of the input layer
     l_input = None
@@ -148,7 +147,7 @@ def segment(args):
     eddl.summary(net)
 
     images = Tensor([batch_size, d.n_channels_, size[0], size[1]])
-    gts = Tensor([batch_size, d.n_channels_gt_, size[0], size[1]])
+    gts = Tensor([batch_size, num_classes, size[0], size[1]])
 
     # TODO create gts also in test if they exist
 

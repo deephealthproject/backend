@@ -63,9 +63,11 @@ def classificate(args):
 
     dataset_augs = ecvl.DatasetAugmentations([train_augs, val_augs, test_augs])
     d = ecvl.DLDataset(dataset_path, batch_size, dataset_augs, *ctypes)
-    num_classes = len(d.classes_)
 
     net = eddl.import_net_from_onnx_file(net.get('location'), input_shape=[d.n_channels_, *size])
+
+    classes = list(range(net.lout[0].output.shape[1]))
+    num_classes = len(classes)
 
     if train:
         if args.get('remove_layer') and layer_to_remove:

@@ -238,6 +238,8 @@ class InferenceViewSet(views.APIView):
 
 
 class InferenceSingleViewSet(views.APIView):
+    queryset = models.ModelWeights.objects.all()
+    queryset_dataset = models.Dataset.objects.all()
     @swagger_auto_schema(request_body=serializers.InferenceSingleSerializer,
                          responses=swagger.inferences_post_responses)
     def post(self, request):
@@ -259,7 +261,7 @@ class InferenceSingleViewSet(views.APIView):
         serializer = serializers.InferenceSingleSerializer(data=request.data, context={'request': request})
 
         if serializer.is_valid():
-            project_id = serializer.validated_data['project_id']
+            project_id = serializer.initial_data['project_id']
             task_id = models.Project.objects.get(id=project_id).task_id
             dummy_dataset = None
             if serializer.validated_data.get('image_data'):
@@ -291,8 +293,15 @@ class InferenceSingleViewSet(views.APIView):
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             # Save dataset and get id
-            d = models.Dataset(name=f'single-image-dataset', task_id=task_id, path='', is_single_image=True)
+            weight = self.queryset.model.objects.get(id=request.data['modelweights_id'])
+            dataset = self.queryset_dataset.model.objects.get(id=weight.dataset_id.id)
+            d = models.Dataset(name=f'single-image-dataset', task_id=task_id, path='', is_single_image=True, ctype=dataset.ctype,
+                               ctype_gt=dataset.ctype_gt, classes=dataset.classes)
             d.save()
+            user = request.user
+            d_perm = models.DatasetPermission.objects.get_or_create(user=user, dataset=d, permission="OWN")
+            d_perm[0].save()
+
             try:
                 yaml_content = yaml.load(dummy_dataset, Loader=yaml.FullLoader)
             except yaml.YAMLError as e:
@@ -308,7 +317,7 @@ class InferenceSingleViewSet(views.APIView):
             d.save()
 
             serializer.validated_data['dataset_id'] = d
-            return utils.do_inference(request, serializer)
+            return utils.do_inference(request, serializer, inference_single=True)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(manual_parameters=[openapi.Parameter('project_id', openapi.IN_QUERY,
@@ -637,9 +646,9 @@ class OutputViewSet(views.APIView):
         else:
             # Segmentation
             # output file contains path of files
-            uri = request.build_absolute_uri(settings.MEDIA_URL)
+            # uri = request.build_absolute_uri(settings.MEDIA_URL)
             lines = outputs.read().splitlines()
-            lines = [l.replace(settings.OUTPUTS_DIR, uri) for l in lines]
+            # lines = [l.replace(settings.OUTPUTS_DIR, uri) for l in lines]
         response = {'outputs': lines}
         return Response(response, status=status.HTTP_200_OK)
 

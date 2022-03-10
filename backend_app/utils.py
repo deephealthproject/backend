@@ -48,7 +48,7 @@ def guess_extension(ftype):
 #         }
 
 
-def do_inference(request, serializer):
+def do_inference(request, serializer, inference_single=False):
     uuid4 = uuid.uuid4().hex + '.log'
     # Dataset could be a normal dataset or a fake single image one
     dataset = serializer.validated_data['dataset_id']
@@ -108,6 +108,10 @@ def do_inference(request, serializer):
     # Create the dict of training settings
     for setting in qs:
         hyperparams[setting.property_id.name] = setting.value
+
+    if inference_single:
+        hyperparams['Batch size'] = 1
+        hyperparams['Epochs'] = 1
 
     config = createConfig(i, hyperparams, 'inference')
     if not config:
