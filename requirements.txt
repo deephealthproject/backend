@@ -8,7 +8,7 @@ markdown       # drf: Markdown support for the browsable API
 pyyaml         # drf: Generate OpenAPI
 uritemplate    # drf: Generate OpenAPI
 django-cors-headers # drf: enables CORS
-celery==5.0.2  # Runs training processes
+celery==5.2.2  # Runs training processes
 sqlalchemy  # Required by celery
 requests
 psycopg2-binary # Allow to connect to PostgreSQL database
