@@ -1141,19 +1141,23 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
                              viewsets.GenericViewSet):
     queryset = models.TrainingSetting.objects.all()
     serializer_class = serializers.TrainingSettingSerializer
-    params = ['training_id', 'property_id']
+    params = ['training_id']
 
     def get_queryset(self):
         training_id = self.request.query_params.get('training_id')
         property_id = self.request.query_params.get('property_id')
-        self.queryset = models.TrainingSetting.objects.filter(training_id=training_id, property_id=property_id)
+        if property_id:
+            self.queryset = models.TrainingSetting.objects.filter(training_id=training_id, property_id=property_id)
+        else:
+            self.queryset = models.TrainingSetting.objects.filter(training_id=training_id)
+
         return self.queryset
 
     @swagger_auto_schema(
         manual_parameters=[openapi.Parameter('training_id', openapi.IN_QUERY, "Integer representing a Training",
                                              required=True, type=openapi.TYPE_INTEGER),
                            openapi.Parameter('property_id', openapi.IN_QUERY, "Integer representing a Property",
-                                             required=True, type=openapi.TYPE_INTEGER)]
+                                             required=False, type=openapi.TYPE_INTEGER)]
     )
     def list(self, request, *args, **kwargs):
         """Returns settings used for a training process
