@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import numpy as np
+import onnx
 import requests
 import yaml
 from celery import shared_task
@@ -379,6 +380,8 @@ class ModelViewSet(mixins.ListModelMixin,
         task_id = self.request.query_params.get('task_id')
         if task_id:
             self.queryset = models.Model.objects.filter(task_id=task_id)
+        else:
+            self.queryset = models.Model.objects.all()
         return self.queryset
 
     @swagger_auto_schema(
@@ -573,6 +576,10 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
             else:
                 return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            try:
+                onnx.checker.check_model(model_out_path)
+            except:
+                return Response({'Error': 'ONNX file is malformed'}, status=status.HTTP_400_BAD_REQUEST)
             weight = serializer.save(name=name, location=model_out_path, process_id=process_id, is_active=True)
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
 
