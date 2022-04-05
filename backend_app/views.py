@@ -645,17 +645,21 @@ class OutputViewSet(views.APIView):
         if not os.path.exists(opjoin(settings.OUTPUTS_DIR, infer.outputfile)):
             return Response({"result": "Output file not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         outputs = open(opjoin(settings.OUTPUTS_DIR, infer.outputfile), 'r')
+
         # Differentiate classification and segmentation
+        lines = outputs.read().splitlines()
         if infer.modelweights_id.model_id.task_id.name.lower() == 'classification':
-            lines = outputs.read().splitlines()
             lines = [line.split(';') for line in lines]
-            # preds = self.trunc(preds, decs=8)
+            for line in lines:
+                with open(line[0][2:-2], "rb") as image_file:
+                    line.insert(1, base64.b64encode(image_file.read()))
+                line[0] = os.path.basename(line[0][:-2])
         else:
             # Segmentation
             # output file contains path of files
-            # uri = request.build_absolute_uri(settings.MEDIA_URL)
-            lines = outputs.read().splitlines()
-            # lines = [l.replace(settings.OUTPUTS_DIR, uri) for l in lines]
+            uri = request.build_absolute_uri(settings.MEDIA_URL)[:-1]
+            lines = [line.replace(settings.OUTPUTS_DIR, uri) for line in lines]
+
         response = {'outputs': lines}
         return Response(response, status=status.HTTP_200_OK)
 
