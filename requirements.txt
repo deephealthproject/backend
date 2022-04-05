@@ -21,6 +21,7 @@ django-rest-passwordreset # Password reset
 pygraphviz
 django-extensions
 gdown # For downloading onnx
+onnx
 
 # PyEDDL/PyECVL requirements
 numpy
