@@ -184,4 +184,7 @@ def launch_training_inference(task_manager, task_name, task_instance, config, sf
         response = {"result": "ok"}
     if new_training_weight:
         response.update({"weight_id": new_training_weight})
+
+    response.update({"created": task_instance.created,
+                     "updated": task_instance.updated})
     return Response(response, status=status.HTTP_201_CREATED)
