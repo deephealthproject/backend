@@ -23,7 +23,7 @@ cd third_party/eddl
 mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=ON -DBUILD_PROTOBUF=ON \
   -DBUILD_TARGET=${DEVICE} -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_HPC=OFF \
-  -DBUILD_SUPERBUILD=OFF ..
+  -DBUILD_SUPERBUILD=ON ..
 cmake --build . --config Release --parallel ${PROC}
 cmake --build . --target install
 export EDDL_WITH_CUDA="true"
