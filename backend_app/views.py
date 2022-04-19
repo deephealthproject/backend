@@ -363,10 +363,16 @@ class ModelWeightsStatusViewSet(views.APIView):
             return Response({'result': 'Process stopped before finishing or non existing.'},
                             status=status.HTTP_404_NOT_FOUND)
 
+        result = AsyncResult(process_id).status
         response = serializers.ModelStatusResponse({
             'process_type': 'Model Weight downloading',
-            'result': AsyncResult(process_id).status
+            'result': result
         })
+        location = weight.get(process_id=process_id).location
+        if result == "SUCCESS" and not onnx_check(location):
+            weight.delete()
+            return Response({'Error': 'ONNX file is malformed'}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(response.data, status=status.HTTP_200_OK)
 
 
@@ -414,6 +420,7 @@ class WeightRenderer(renderers.BaseRenderer):
 
     def render(self, data, media_type=None, renderer_context=None):
         return data
+
 
 class ModelWeightsDownloadViewSet(views.APIView):
     queryset = models.ModelWeights.objects.all()
@@ -559,6 +566,8 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                 url = serializer.validated_data.pop('onnx_url')
                 if urlparse(url).scheme == 'file':
                     model_out_path = urlparse(url).netloc
+                    if not onnx_check(model_out_path):
+                        return Response({'Error': 'ONNX file is malformed'}, status=status.HTTP_400_BAD_REQUEST)
                 else:
                     try:
                         process_id = onnx_download.delay(url, model_out_path)
@@ -573,13 +582,12 @@ class ModelWeightsViewSet(BAMixins.ParamListModelMixin,
                 onnx_data = onnx_data.read()
                 with open(model_out_path, 'wb') as f:
                     f.write(onnx_data)
+                if not onnx_check(model_out_path):
+                    os.remove(model_out_path)
+                    return Response({'Error': 'ONNX file is malformed'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({'error': 'How did you get here?'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            try:
-                onnx.checker.check_model(model_out_path)
-            except:
-                return Response({'Error': 'ONNX file is malformed'}, status=status.HTTP_400_BAD_REQUEST)
             weight = serializer.save(name=name, location=model_out_path, process_id=process_id, is_active=True)
             models.ModelWeightsPermission.objects.create(modelweight=weight, user=self.request.user)
 
@@ -1169,7 +1177,20 @@ class TrainingSettingViewSet(BAMixins.ParamListModelMixin,
         This API returns the value used for a property in a specific Training.
         It requires a `training_id`, indicating a training process, and a `property_id`.
         """
-        return super().list(request, *args, **kwargs)
+        response = super().list(request, *args, **kwargs)
+
+        training_id = self.request.query_params.get('training_id')
+        property_id = self.request.query_params.get('property_id')
+        if not property_id:
+            training = models.Training.objects.filter(id=training_id)
+            mw = training.get(id=training_id).modelweights_id
+            dataset_id = mw.dataset_id_id
+            model_id = mw.model_id_id
+            response.data.append({"dataset_id": dataset_id,
+                                  "model_id": model_id,
+                                  "modelweights_id": mw.id})
+
+        return response
 
 
 @shared_task
@@ -1196,3 +1217,11 @@ def enable_weight(task_return_value: bool, weight_id: int) -> None:
 @shared_task
 def error_handler(request, exc, traceback):
     print('Task {0} raised exception: {1!r}\n{2!r}'.format(request.id, exc, traceback))
+
+
+def onnx_check(model_out_path):
+    try:
+        onnx.checker.check_model(model_out_path)
+        return True
+    except:
+        return False
